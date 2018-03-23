@@ -82,6 +82,6 @@ If you use this code in your research, please cite our paper:
   title={Generative Adversarial Autoencoder Networks},
   author={Ngoc-Trung Tran and Tuan-Anh Bui and Ngai-Man Cheung},
   journal={Arxiv},
-  year={2017}
+  year={2018}
 }
 ```
