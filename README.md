@@ -25,6 +25,7 @@ In addition to GAAN, we also implement GAN, MDGAN, VAEGAN, WGAN-GP. Just changin
 https://github.com/kremerj/gan <br>
 http://notebooks.aylien.com/research/gan/gan_simple.html
 
+Comming soon.
 
 #### 2D synthetic data
 ```
@@ -36,6 +37,9 @@ We provides three different data layouts you can test on: 'SINE' 'PLUS' 'SQUARE'
 ```
 testcase      = 'SQUARE'
 ```
+
+Comming soon.
+
 #### MNIST/MNIST-1K dataset
 
 Our implementation on MNIST/MNIST-1K is based on `tflib`: https://github.com/igul222/improved_wgan_training
