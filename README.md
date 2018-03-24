@@ -82,10 +82,10 @@ Comming soon.
 If you use this code in your research, please cite our paper:
 
 ```
-@article{trung_2018_gaan,
+@article{trung2018gaan,
   title={Generative Adversarial Autoencoder Networks},
   author={Ngoc-Trung Tran and Tuan-Anh Bui and Ngai-Man Cheung},
-  journal={Arxiv},
+  journal={arXiv preprint arXiv},
   year={2018}
 }
 ```
