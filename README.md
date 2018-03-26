@@ -19,11 +19,17 @@ In addition to GAAN, we also implement GAN, MDGAN, VAEGAN, WGAN-GP. Just changin
 >> cd gaan_toy1d
 >> python gaan_toy1d.py
 ```
+Quick video demos, you can easily these videos with our code:
 
-1D demo references:
+[GAN](https://www.youtube.com/watch?v=eisFNXbGaNI) <br>
+[WGANGP](https://www.youtube.com/watch?v=5MDBwdfD5rY) <br>
+[VAEGAN](https://www.youtube.com/watch?v=587z8VBcvvQ) <br>
+[GAAN](https://www.youtube.com/watch?v=eisFNXbGaNI)
 
-https://github.com/kremerj/gan <br>
-http://notebooks.aylien.com/research/gan/gan_simple.html
+Our 1D code is based on 1D demo references:
+
+[1] https://github.com/kremerj/gan <br>
+[2] http://notebooks.aylien.com/research/gan/gan_simple.html
 
 Comming soon.
 
