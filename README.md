@@ -19,7 +19,7 @@ In addition to GAAN, we also implement GAN, MDGAN, VAEGAN, WGAN-GP. Just changin
 >> cd gaan_toy1d
 >> python gaan_toy1d.py
 ```
-Quick video demos, you can easily these videos with our code:
+Quick video demos, you can reproduce easily these videos with our code:
 
 [GAN](https://www.youtube.com/watch?v=eisFNXbGaNI) <br>
 [WGANGP](https://www.youtube.com/watch?v=5MDBwdfD5rY) <br>
