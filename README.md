@@ -24,7 +24,7 @@ Quick video demos, you can reproduce easily these videos with our code:
 [GAN](https://www.youtube.com/watch?v=eisFNXbGaNI) <br>
 [WGANGP](https://www.youtube.com/watch?v=5MDBwdfD5rY) <br>
 [VAEGAN](https://www.youtube.com/watch?v=587z8VBcvvQ) <br>
-[GAAN](https://www.youtube.com/watch?v=eisFNXbGaNI)
+[GAAN](https://www.youtube.com/watch?v=IjbdMNo4m_8)
 
 Our 1D code is based on 1D demo references:
 
