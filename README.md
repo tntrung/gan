@@ -31,8 +31,6 @@ Our 1D code is based on 1D demo references:
 [1] https://github.com/kremerj/gan <br>
 [2] http://notebooks.aylien.com/research/gan/gan_simple.html
 
-Comming soon.
-
 #### 2D synthetic data
 ```
 >> cd gaan_toy2d
@@ -43,8 +41,6 @@ We provides three different data layouts you can test on: 'SINE' 'PLUS' 'SQUARE'
 ```
 testcase      = 'SQUARE'
 ```
-
-Comming soon.
 
 #### MNIST/MNIST-1K dataset
 
