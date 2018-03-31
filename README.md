@@ -1,5 +1,3 @@
-# Generative Adversarial Autoencoder Networks (GAAN)
-
 Tensorflow implementation of Generative Adversarial Autoencoder Networks (GAAN)
 
 ## Setup
