@@ -42,16 +42,13 @@ testcase      = 'SQUARE'
 
 #### MNIST/MNIST-1K dataset
 
-Our implementation on MNIST/MNIST-1K is based on `tflib`: https://github.com/igul222/improved_wgan_training
-
-First, downloading `tflib` put in the same folder of our mnist python code, eg. `gaan_mnist`:
+Our implementation on MNIST/MNIST-1K is using `tflib` from [here](https://github.com/igul222/improved_wgan_training)
+Therefore, download `tflib` and put it in the folder of `gaan_mnist` to run our code:
 
 ```
 >> cd gaan_mnist
 >> python gaan_mnist.py
 ```
-
-Comming soon.
 
 #### CelebA dataset
 
