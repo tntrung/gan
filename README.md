@@ -1,16 +1,14 @@
-Tensorflow implementation of Generative Adversarial Autoencoder Networks (GAAN)
+Code for experiments in [Generative Adversarial Autoencoder Networks (GAAN)](https://arxiv.org/abs/1803.08887)
 
 ## Setup
 
 ### Prerequisites
-Tensorflow <br>
+Python, Numpy, Tensorflow <br>
 
 ### Getting Started
-
 We conduct experiments of our model with 1D/2D synthetic data, MNIST, CelebA and CIFAR-10 datasets.
 
 #### 1D demo
-
 In addition to GAAN, we also implement GAN, MDGAN, VAEGAN, WGAN-GP. Just changing model name in our code.
 
 ```
@@ -41,7 +39,6 @@ testcase      = 'SQUARE'
 ```
 
 #### MNIST/MNIST-1K dataset
-
 Our implementation on MNIST/MNIST-1K is using `tflib` from [here](https://github.com/igul222/improved_wgan_training). Therefore, download `tflib` and put it in the folder of `gaan_mnist` to run our code:
 
 ```
@@ -50,7 +47,6 @@ Our implementation on MNIST/MNIST-1K is using `tflib` from [here](https://github
 ```
 
 #### CelebA dataset
-
 Our implementation on CelebA is based on follow implementation: https://github.com/LynnHo/DCGAN-LSGAN-WGAN-WGAN-GP-Tensorflow (since DCGAN is collapsed with network architecture at epoch 50).
 
 To download CelebA dataset and change `img_paths` in `gaan_celeba.py` with your correct path. For example:
@@ -62,7 +58,6 @@ img_paths = glob.glob('./data/img_align_celeba/*.jpg')
 ```
 >> python gaan_celeba.py
 ```
-
 Comming soon.
 
 #### CIFAR-10 dataset
@@ -70,11 +65,9 @@ Comming soon.
 ```
 >> python gaan_cifar.py
 ```
-
 Comming soon.
 
 ## Citation
-
 If you use this code in your research, please cite our paper:
 
 ```
