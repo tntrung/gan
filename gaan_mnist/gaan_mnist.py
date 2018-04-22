@@ -135,10 +135,6 @@ d_real,  d_real_logit,  f_real  = Discriminator(X)
 d_recon, d_recon_logit, f_recon = Discriminator(decode_X)
 d_fake,  d_fake_logit,  f_fake  = Discriminator(fake_X)
 
-# debug info
-f_size = tf.cast(f_real.get_shape()[1],tf.float32) # = 4096
-print('feature size: {}'.format(f_size))
-
 # auto-encoder regularization
 rec_loss     = tf.reduce_mean(tf.square(f_real - f_recon))
 rec_loss_x   = tf.reduce_mean((f_real - f_fake))
