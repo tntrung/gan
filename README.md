@@ -9,7 +9,7 @@ Python, Numpy, Tensorflow <br>
 We conduct experiments of our model with 1D/2D synthetic data, MNIST, CelebA and CIFAR-10 datasets.
 
 #### 1D demo
-In addition to GAAN, we also implement GAN, MDGAN, VAEGAN, WGAN-GP. Just changing model name in our code.
+In addition to GAAN, other methods, such as GAN, MDGAN, VAEGAN, WGAN-GP are provided in our code.
 
 ```
 >> cd gaan_toy1d
@@ -30,7 +30,7 @@ Our 1D code is based on 1D demo references:
 #### 2D synthetic data
 ```
 >> cd gaan_toy2d
->> python gaan_toy2d.py
+>> python gan_toy2d.py
 ```
 
 We provides three different data layouts you can test on: 'SINE' 'PLUS' 'SQUARE'. Just change the parameter `testcase` in the code `gaan_toy2d.py`. For example:
