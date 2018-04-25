@@ -13,7 +13,7 @@ In addition to GAAN, other methods, such as GAN, MDGAN, VAEGAN, WGAN-GP are prov
 
 ```
 >> cd gaan_toy1d
->> python gaan_toy1d.py
+>> python gan_toy1d.py
 ```
 Quick video demos, you can reproduce easily these videos with our code:
 
@@ -30,7 +30,7 @@ Our 1D code is based on 1D demo references:
 #### 2D synthetic data
 ```
 >> cd gaan_toy2d
->> python gan_toy2d.py
+>> python gaan_toy2d.py
 ```
 
 We provides three different data layouts you can test on: 'SINE' 'PLUS' 'SQUARE'. Just change the parameter `testcase` in the code `gaan_toy2d.py`. For example:
