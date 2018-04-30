@@ -33,39 +33,21 @@ Our 1D code is based on 1D demo references:
 >> python gaan_toy2d.py
 ```
 
-We provides three different data layouts you can test on: 'SINE' 'PLUS' 'SQUARE'. Just change the parameter `testcase` in the code `gaan_toy2d.py`. For example:
+We provide three different data layouts you can test on: 'SINE' 'PLUS' 'SQUARE'. Just change the parameter `testcase` in the code `gaan_toy2d.py`. For example:
 ```
 testcase      = 'SQUARE'
 ```
 
-#### MNIST/MNIST-1K dataset
-Our implementation on MNIST/MNIST-1K is using `tflib` from [here](https://github.com/igul222/improved_wgan_training). Therefore, download `tflib` and put it in the folder of `gaan_mnist` to run our code:
+#### Image data (MNIST, CelebA and CIFAR-10)
+
+We provide our code for image datasets, such as: MNIST, CelebA and CIFAR-10.
 
 ```
->> cd gaan_mnist
->> python gaan_mnist.py
+>> cd gaan_image
+>> python gan_mnist.py
 ```
 
-#### CelebA dataset
-Our implementation on CelebA is based on follow implementation: https://github.com/LynnHo/DCGAN-LSGAN-WGAN-WGAN-GP-Tensorflow (since DCGAN is collapsed with network architecture at epoch 50).
-
-To download CelebA dataset and change `img_paths` in `gaan_celeba.py` with your correct path. For example:
-
-```
-img_paths = glob.glob('./data/img_align_celeba/*.jpg')
-```
-
-```
->> python gaan_celeba.py
-```
-Comming soon.
-
-#### CIFAR-10 dataset
-
-```
->> python gaan_cifar.py
-```
-Comming soon.
+Codes for CelebA and CIFAR-10 will come soon.
 
 ## Citation
 If you use this code in your research, please cite our paper:
