@@ -44,7 +44,7 @@ We provide our code for image datasets, such as: MNIST, CelebA and CIFAR-10.
 
 ```
 >> cd gaan_image
->> python gan_mnist.py
+>> python gaan_mnist.py
 ```
 
 Codes for CelebA and CIFAR-10 will come soon.
