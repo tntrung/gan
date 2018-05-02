@@ -2,7 +2,37 @@ import math
 import numpy as np
 import tensorflow as tf
 
+# for mnist
 from tensorflow.examples.tutorials.mnist import input_data
+
+# for cifar10
+import cPickle as pickle
+
+def unpickle(file):
+    fo = open(file, 'rb')
+    dict = pickle.load(fo)
+    fo.close()
+    return dict['data'], dict['labels']
+    
+def read_cifar10(data_dir, filenames):
+    all_data = []
+    all_labels = []
+    for filename in filenames:        
+        data, labels = unpickle(data_dir + '/' + filename)
+        all_data.append(data)
+        all_labels.append(labels)
+
+    images = np.concatenate(all_data, axis=0)
+    labels = np.concatenate(all_labels, axis=0)
+    
+    #normalize into [0,1]
+    images = images.astype(float)/255.0
+    images = np.reshape(images,(-1, 3, 32, 32))
+    images = np.transpose(images,(0,2,3,1)) #tranpose to standard order of channels
+    images = np.reshape(images,(-1, 32*32*3))
+    
+    print('cifar10 data: {}'.format(np.shape(images)))
+    return images, labels
 
 class Dataset(object):
 
@@ -23,22 +53,30 @@ class Dataset(object):
 			self.mnist = input_data.read_data_sets(source)
 			self.data  = self.mnist.train.images
 			print('data shape: {}'.format(np.shape(self.data)))
+		elif name == 'cifar10':
+			# download data files from: 'http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz' 
+			# extract into the correct folder
+			data_files = ['data_batch_1','data_batch_2','data_batch_3','data_batch_4','data_batch_5']
+			self.data, _ = read_cifar10(source, data_files)
 			
 		self.minibatches = self.random_mini_batches(self.data.T, self.batch_size, self.seed)
-
 
 	def db_name(self):
 		return self.name
 
 	def data_dim(self):
 		if self.name == 'mnist':
-			return 784
+			return 784  #28x28
+		elif self.name == 'cifar10':
+			return 3072 #32x32x3
 		else:
 			print('data_dim is unknown.\n')
 
 	def data_shape(self):
 		if self.name == 'mnist':
-			return [28, 28]
+			return [28, 28, 1]
+		elif self.name == 'cifar10':
+			return [32, 32, 3]
 		else:
 			print('data_dim is unknown.\n')
 			

@@ -10,13 +10,14 @@ from modules.imutils import *
 from modules.models import *
 from modules import ops
 
-class GAN(object):
+class GAAN(object):
 
     """
     Implementation of GAN methods.
     """
 
     def __init__(self, model='gaan', \
+                 lambda_p = 1.0, lambda_r = 1.0, lambda_w = 0.15625, \
                  lr=2e-4, beta1 = 0.5, beta2 = 0.9, noise_dim = 100, \
                  nnet_type='dcgan', \
                  df_dim = 64, gf_dim = 64, ef_dim = 64, \
@@ -61,9 +62,9 @@ class GAN(object):
         self.noise_dim  = noise_dim
 
         # pamraeters
-        self.lambda_p  = 1.0
-        self.lambda_r  = 1.0
-        self.lambda_w  = 0.15625 # or you can set by yourself = sqrt(d/D)
+        self.lambda_p  = lambda_p
+        self.lambda_r  = lambda_r
+        self.lambda_w  = lambda_w
 
         # others
         self.out_dir      = out_dir
@@ -78,16 +79,20 @@ class GAN(object):
     def create_discriminator(self):
         if self.nnet_type == 'dcgan' and self.db_name == 'mnist':
             return discriminator_mnist
+        elif self.nnet_type == 'dcgan' and self.db_name == 'cifar10':
+			return discriminator
 
     def create_generator(self):
-
         if self.nnet_type == 'dcgan' and self.db_name == 'mnist':
             return generator_mnist
+        elif self.nnet_type == 'dcgan' and self.db_name == 'cifar10':
+			return generator            
 
     def create_encoder(self):
-
         if self.nnet_type == 'dcgan' and self.db_name == 'mnist':
             return encoder_mnist 
+        elif self.nnet_type == 'dcgan' and self.db_name == 'cifar10':
+			return encoder
 
     def create_optimizer(self, loss, var_list, learning_rate, beta1, beta2):
         """Create the optimizer operation.
@@ -110,25 +115,25 @@ class GAN(object):
         # create encoder
         with tf.variable_scope('encoder'):
             self.E   = self.create_encoder()
-            self.z_e = self.E(self.X, self.noise_dim, self.ef_dim, reuse=False)
+            self.z_e = self.E(self.X, self.data_shape, self.noise_dim, dim = self.ef_dim, reuse=False)
 
         # create generator
         with tf.variable_scope('generator'):
             self.G   = self.create_generator()
-            self.X_f = self.G(self.z,   self.data_dim, self.gf_dim, reuse=False) #generate fake samples
-            self.X_r = self.G(self.z_e, self.data_dim, self.gf_dim, reuse=True)  #generate reconstruction samples
+            self.X_f = self.G(self.z,   self.data_shape, dim = self.gf_dim, reuse=False) #generate fake samples
+            self.X_r = self.G(self.z_e, self.data_shape, dim = self.gf_dim, reuse=True)  #generate reconstruction samples
 
         # create discriminator
         with tf.variable_scope('discriminator'):
             self.D   = self.create_discriminator()
-            self.d_real_sigmoid,  self.d_real_logit,  self.f_real   = self.D(self.X, reuse=False)
-            self.d_fake_sigmoid,  self.d_fake_logit,  self.f_fake   = self.D(self.X_f, reuse=True)
-            self.d_recon_sigmoid, self.d_recon_logit, self.f_recon  = self.D(self.X_r, reuse=True)
+            self.d_real_sigmoid,  self.d_real_logit,  self.f_real   = self.D(self.X,   self.data_shape, dim = self.gf_dim, reuse=False)
+            self.d_fake_sigmoid,  self.d_fake_logit,  self.f_fake   = self.D(self.X_f, self.data_shape, dim = self.gf_dim, reuse=True)
+            self.d_recon_sigmoid, self.d_recon_logit, self.f_recon  = self.D(self.X_r, self.data_shape, dim = self.gf_dim, reuse=True)
             
             # Compute gradient penalty
             epsilon = tf.random_uniform(shape=tf.shape(self.X), minval=0., maxval=1.)
             interpolation = epsilon * self.X + (1 - epsilon) * self.X_f
-            _,d_inter,_ = self.D(interpolation, reuse=True, training=False)
+            _,d_inter,_ = self.D(interpolation, self.data_shape, reuse=True)
             gradients = tf.gradients([d_inter], [interpolation])[0]
             slopes = tf.sqrt(tf.reduce_mean(tf.square(gradients), reduction_indices=[1]))
             penalty = tf.reduce_mean((slopes - 1) ** 2)
@@ -145,7 +150,8 @@ class GAN(object):
         self.d_recon = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.d_recon_logit,labels=tf.ones_like(self.d_recon_sigmoid)))
         
         self.r_cost  = self.ae_loss  + self.lambda_r * self.ae_reg
-        self.d_cost  = (self.d_real + self.d_recon)*0.5 + self.d_fake + self.lambda_p * penalty
+        # lower weights for d_recon to achieve sharper generated images, slightly improved from the original paper
+        self.d_cost  = 0.95 * self.d_real + 0.05 * self.d_recon + self.d_fake + self.lambda_p * penalty
         self.g_cost  = tf.abs(tf.reduce_mean(self.d_real_sigmoid) - tf.reduce_mean(self.d_fake_sigmoid))
 
         # Create optimizers
@@ -153,8 +159,11 @@ class GAN(object):
         self.vars_g = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
         self.vars_d = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator')
         
+        print('[encoder parameters]')
         print(self.vars_e)
+        print('[generator parameters]')
         print(self.vars_g)
+        print('[discriminator parameters]')
         print(self.vars_d)
 
         # Setup for weight decay
@@ -184,6 +193,13 @@ class GAN(object):
                 # train auto-encoder
                 mb_X = self.dataset.next_batch()
                 mb_z = self.sample_z(np.shape(mb_X)[0])
+                
+                if step == 0:
+					# check f_feature size of discriminator
+					f_real = sess.run(self.f_real,feed_dict={self.X: mb_X, self.z: mb_z})
+					print('Feature size: {}'.format(np.shape(f_real)))
+                
+                X, X_f, X_r = sess.run([self.X, self.X_f, self.X_r],feed_dict={self.X: mb_X, self.z: mb_z})
                 loss_r, _ = sess.run([self.r_cost, self.opt_r],feed_dict={self.X: mb_X, self.z: mb_z})
 
                 # train discriminator
@@ -202,18 +218,17 @@ class GAN(object):
                             print('step: {:4d}, D loss: {:8.4f}, G loss: {:8.4f}, R loss: {:8.4f}, time: {:3d} s'.format(step, loss_d, loss_g, loss_r, elapsed)) 
 
                 if step % 1000 == 0:
-                    
-                    # save real images
-                    im_real_save  = np.reshape(mb_X,(-1, self.data_shape[0], self.data_shape[1], 1))
+                    im_real_save = np.reshape(mb_X,(-1, self.data_shape[0], self.data_shape[1],self.data_shape[2]))
                     ncols, nrows = immerge_row_col(np.shape(im_real_save)[0])
                     im_save_path = os.path.join(self.out_dir,'image_%d_real.jpg' % (step))
                     im_merge = immerge(im_real_save, ncols, nrows)
                     imwrite(im_merge, im_save_path)
+                    
 
                     # save generated images
                     im_fake_save = sess.run(self.X_f,feed_dict={self.z: mb_z})
-                    im_fake_save = np.reshape(im_fake_save,(-1, self.data_shape[0], self.data_shape[1], 1))
+                    im_fake_save = np.reshape(im_fake_save,(-1, self.data_shape[0], self.data_shape[1], self.data_shape[2]))
                     ncols, nrows = immerge_row_col(np.shape(im_fake_save)[0])
                     im_save_path = os.path.join(self.out_dir,'image_%d_fake.jpg' % (step))
                     im_merge = immerge(im_fake_save, ncols, nrows)
-                    imwrite(im_merge, im_save_path)                    
+                    imwrite(im_merge, im_save_path)

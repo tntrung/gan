@@ -20,38 +20,42 @@ batch_norm = partial(slim.batch_norm, decay=0.9, scale=True, epsilon=1e-5, updat
 '''
 Common encoder/generator/discriminator
 '''
-def encoder(img, z_dim=128, dim=64, kernel_size=5, stride=2, name = 'encoder', reuse=True, training=True):
+def encoder(img, x_shape, z_dim=128, dim=64, kernel_size=5, stride=2, name = 'encoder', reuse=True, training=True):
     bn = partial(batch_norm, is_training=training)
     conv_bn_lrelu = partial(conv, normalizer_fn=bn, activation_fn=lrelu, biases_initializer=None)
 
+    y = tf.reshape(img,[-1, x_shape[0], x_shape[1], x_shape[2]])
     with tf.variable_scope(name, reuse=reuse):
-        y = lrelu(conv(img, dim, kernel_size, stride))
+        y = lrelu(conv(y, dim, kernel_size, stride))
         y = conv_bn_lrelu(y, dim * 2, kernel_size, stride)
         y = conv_bn_lrelu(y, dim * 4, kernel_size, stride)
         y = conv_bn_lrelu(y, dim * 8, kernel_size, stride)
         logit = fc(y, z_dim)
         return logit
 
-def generator(z, dim=64, kernel_size=5, stride=2, name = 'generator', reuse=True, training=True):
+def generator(z, x_shape, dim=64, kernel_size=5, stride=2, name = 'generator', reuse=True, training=True):
     bn = partial(batch_norm, is_training=training)
     dconv_bn_relu = partial(dconv, normalizer_fn=bn, activation_fn=relu, biases_initializer=None)
     fc_bn_relu = partial(fc, normalizer_fn=bn, activation_fn=relu, biases_initializer=None)
 
+    x_dim = x_shape[0] * x_shape[1] * x_shape[2]
     with tf.variable_scope(name, reuse=reuse):
-        y = fc_bn_relu(z, 4 * 4 * dim * 8)
-        y = tf.reshape(y, [-1, 4, 4, dim * 8])
+        y = fc_bn_relu(z, 2 * 2 * dim * 8)
+        y = tf.reshape(y, [-1, 2, 2, dim * 8])
         y = dconv_bn_relu(y, dim * 4, kernel_size, stride)
         y = dconv_bn_relu(y, dim * 2, kernel_size, stride)
         y = dconv_bn_relu(y, dim * 1, kernel_size, stride)
-        y = dconv(y, 3, 5, stride)
-        return tf.tanh(y)
+        y = dconv(y, x_shape[2], kernel_size, stride)
+        y = tf.reshape(y, [-1, x_dim])
+        return tf.sigmoid(y)
                
-def discriminator(img, dim=64, kernel_size=5, stride=2, name='discriminator', reuse=True, training=True):
+def discriminator(img, x_shape, dim=64, kernel_size=5, stride=2, name='discriminator', reuse=True, training=True):
     bn = partial(batch_norm, is_training=training)
     conv_bn_lrelu = partial(conv, normalizer_fn=bn, activation_fn=lrelu, biases_initializer=None)
 
-    with tf.variable_scope(dname, reuse=reuse):
-        y = lrelu(conv(img, dim, kernel_size, 2))
+    y = tf.reshape(img,[-1, x_shape[0], x_shape[1], x_shape[2]])
+    with tf.variable_scope(name, reuse=reuse):
+        y = lrelu(conv(y, dim, kernel_size, 2))
         y = conv_bn_lrelu(y, dim * 2, kernel_size, stride)
         y = conv_bn_lrelu(y, dim * 4, kernel_size, stride)
         feature = y
@@ -63,12 +67,12 @@ def discriminator(img, dim=64, kernel_size=5, stride=2, name='discriminator', re
 The encoder/generator/discriminator for MNIST (smaller network for 32x32 images)
 '''
 
-def encoder_mnist(img, z_dim=128, dim=64, kernel_size=5, stride=2, name = 'encoder', reuse=True, training=True):
+def encoder_mnist(img, x_shape, z_dim=128, dim=64, kernel_size=5, stride=2, name = 'encoder', reuse=True, training=True):
     bn = partial(batch_norm, is_training=training)
     conv_bn_relu = partial(conv, normalizer_fn=bn, activation_fn=relu, biases_initializer=None)
     
     print("encoder---")
-    y = tf.reshape(img,[-1, 28, 28, 1])
+    y = tf.reshape(img,[-1, x_shape[0], x_shape[1], x_shape[2]])
     print(y.get_shape())
     with tf.variable_scope(name, reuse=reuse):
         y = relu(conv(y, dim, kernel_size, stride))
@@ -81,11 +85,12 @@ def encoder_mnist(img, z_dim=128, dim=64, kernel_size=5, stride=2, name = 'encod
         print(logit.get_shape())
         return logit
 
-def generator_mnist(z, x_dim, dim=64, kernel_size=5, stride=2, name = 'generator', reuse=True, training=True):
+def generator_mnist(z, x_shape, dim=64, kernel_size=5, stride=2, name = 'generator', reuse=True, training=True):
     bn = partial(batch_norm, is_training=training)
     dconv_bn_relu = partial(dconv, normalizer_fn=bn, activation_fn=relu, biases_initializer=None)
     fc_bn_relu = partial(fc, normalizer_fn=bn, activation_fn=relu, biases_initializer=None)
 
+    x_dim = x_shape[0] * x_shape[1] * x_shape[2]  
     print("generator---")
     with tf.variable_scope(name, reuse=reuse):
         y = fc_bn_relu(z, 4 * 4 * dim * 4)
@@ -99,17 +104,17 @@ def generator_mnist(z, x_dim, dim=64, kernel_size=5, stride=2, name = 'generator
         print(y.get_shape())
         y = dconv_bn_relu(y, dim * 1, kernel_size, stride)
         print(y.get_shape())
-        y = dconv(y, 1, kernel_size, stride)
+        y = dconv(y, x_shape[2], kernel_size, stride)
         print(y.get_shape())
         y = tf.reshape(y, [-1, x_dim])
         return tf.sigmoid(y)
                
-def discriminator_mnist(img, dim=64, kernel_size=5, stride=2, name='discriminator', reuse=True, training=True):
+def discriminator_mnist(img, x_shape, dim=64, kernel_size=5, stride=2, name='discriminator', reuse=True, training=True):
     bn = partial(batch_norm, is_training=training)
     conv_bn_lrelu = partial(conv, normalizer_fn=bn, activation_fn=lrelu, biases_initializer=None)
 
     print("discriminator---")
-    y = tf.reshape(img,[-1, 28, 28, 1])
+    y = tf.reshape(img,[-1, x_shape[0], x_shape[1], x_shape[2]])
     print(y.get_shape())
     with tf.variable_scope(name, reuse=reuse):
         y = lrelu(conv(y, dim, kernel_size, stride))

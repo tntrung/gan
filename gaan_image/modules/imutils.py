@@ -15,7 +15,7 @@ def imwrite(image, path):
         image = np.array(image, copy=True)
         image.shape = image.shape[0:2]
     return io.imsave(path, image)
-    
+     
 def immerge_row_col(N):
 	c = int(np.floor(np.sqrt(N)))
 	for v in range(c,N):
@@ -40,4 +40,3 @@ def immerge(images, row, col):
         j = idx // col
         img[j * h:j * h + h, i * w:i * w + w, ...] = image
     return img
-
