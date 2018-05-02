@@ -42,10 +42,22 @@ testcase      = 'SQUARE'
 
 We provide our code for image datasets, such as: MNIST, CelebA and CIFAR-10.
 
+##### MNIST
+
 ```
 >> cd gaan_image
 >> python gaan_mnist.py
 ```
+
+##### CIFAR-10
+Downloading cifar-10 from 'http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz' and extracting it into the correct folder: eg. `./data/cifar10/`
+
+```
+>> cd gaan_image
+>> python gaan_cifar.py
+```
+
+##### CelebA
 
 Codes for CelebA will come soon.
 
