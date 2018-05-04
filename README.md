@@ -66,7 +66,7 @@ Downloading cifar-10 from: https://drive.google.com/drive/folders/0B7EVK8r0v71pT
 ```
 
 ## Citation
-If you use this code in your research, please cite our paper:
+If you use our code in your research, please cite our paper:
 
 ```
 @article{trung2018gaan,
