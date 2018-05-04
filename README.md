@@ -58,8 +58,12 @@ Downloading cifar-10 from 'http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.g
 ```
 
 ##### CelebA
+Downloading cifar-10 from: https://drive.google.com/drive/folders/0B7EVK8r0v71pTUZsaXdaSnZBZzg and extract into the correct folder: eg. `./data/celeba/`
 
-Codes for CelebA will come soon.
+```
+>> cd gaan_image
+>> python gaan_celeba.py
+```
 
 ## Citation
 If you use this code in your research, please cite our paper:
