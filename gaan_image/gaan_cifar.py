@@ -21,7 +21,7 @@ if __name__ == '__main__':
     lambda_r  = 1.0    
     # or you set by yourself = sqrt(d/D) as in the paper, if you change
     # the network architecture
-    lambda_w  = 0.15625 
+    lambda_w  = 0.2209
     
     #output dir
     out_dir = os.path.join(out_dir, model, db_name)
