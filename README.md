@@ -18,7 +18,7 @@ In addition to GAAN, other methods, such as GAN, MDGAN, VAEGAN, WGAN-GP are prov
 Quick video demos, you can reproduce easily these videos with our code:
 
 [GAN](https://www.youtube.com/watch?v=eisFNXbGaNI) <br>
-[WGANGP](https://www.youtube.com/watch?v=5MDBwdfD5rY) (WGAN-GP can match data distribution at some time, but diverged later) <br> 
+[WGANGP](https://www.youtube.com/watch?v=5MDBwdfD5rY) (WGAN-GP can match data distribution at some time, but diverged later) <br>
 [VAEGAN](https://www.youtube.com/watch?v=587z8VBcvvQ) <br>
 [GAAN](https://www.youtube.com/watch?v=IjbdMNo4m_8)
 
@@ -74,6 +74,9 @@ Downloading cifar-10 from: https://drive.google.com/drive/folders/0B7EVK8r0v71pT
 >> cd gaan_image
 >> python gaan_celeba.py
 ```
+
+<img src="./gaan_image/images/celeba_100000_fake.jpg" width="300" height="300">
+<img src="./gaan_image/images/celeba_100000_real.jpg" width="300" height="300">
 
 ## Citation
 If you use our code in your research, please cite our paper:
