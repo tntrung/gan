@@ -17,8 +17,8 @@ if __name__ == '__main__':
     '''
     model parameters
     '''
-    lambda_p  = 100.0
-    lambda_r  = 100.0 # bigger D, bigger lambda_r
+    lambda_p  = 1.0
+    lambda_r  = 1.0 # bigger D, bigger lambda_r
     # or you set by yourself = sqrt(d/D) as in the paper, if you change
     # the network architecture
     lambda_w  = 0.11049
