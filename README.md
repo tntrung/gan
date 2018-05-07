@@ -75,8 +75,8 @@ Downloading cifar-10 from: https://drive.google.com/drive/folders/0B7EVK8r0v71pT
 >> python gaan_celeba.py
 ```
 
-![Generated samples](./gaan_image/images/celeba_100000_fake.jpg) <!-- .element height="50%" width="50%" -->
-![Real samples](./gaan_image/images/celeba_100000_real.jpg) <!-- .element height="50%" width="50%" -->
+![Generated samples](./gaan_image/images/celeba_100000_fake.jpg)
+![Real samples](./gaan_image/images/celeba_100000_real.jpg)
 
 
 ## Citation
