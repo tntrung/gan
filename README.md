@@ -1,8 +1,8 @@
-Code for experiments in [Generative Adversarial Autoencoder Networks (GAAN)](https://arxiv.org/abs/1803.08887)
+Code accompanying our paper [Generative Adversarial Autoencoder Networks (GAAN)](https://arxiv.org/abs/1803.08887)
 
 ## Setup
 
-### Prerequisites
+### Dependencies
 Python, Numpy, Tensorflow <br>
 
 ### Getting Started
