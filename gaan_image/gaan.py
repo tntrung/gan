@@ -131,7 +131,7 @@ class GAAN(object):
             self.d_recon_sigmoid, self.d_recon_logit, self.f_recon  = self.D(self.X_r, self.data_shape, dim = self.gf_dim, reuse=True)
             
             # Compute gradient penalty
-            epsilon = tf.random_uniform(shape=tf.shape(self.X), minval=0., maxval=1.)
+            epsilon = tf.random_uniform(shape=[tf.shape(self.X)[0],1], minval=0., maxval=1.)
             interpolation = epsilon * self.X + (1 - epsilon) * self.X_f
             _,d_inter,_ = self.D(interpolation, self.data_shape, reuse=True)
             gradients = tf.gradients([d_inter], [interpolation])[0]
