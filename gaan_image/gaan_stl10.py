@@ -20,23 +20,13 @@ if __name__ == '__main__':
     '''
     n_steps   = 200000
     
-    # set f_dim the correct size (output from last layer of discriminator)
-    if nnet_type == 'sngan': 
-        df_dim = 64
-        gf_dim = 64
-        ef_dim = 64  
-        lr     = 2e-4
-        beta1  = 0.5
-        beta2  = 0.9
-        f_dim  = 18432.
-    elif nnet_type == 'dcgan':
-		df_dim = 64
-        gf_dim = 64
-        ef_dim = 64
-        lr    = 2e-4
-        beta2 = 0.9
-        beta1 = 0.5
-        f_dim = 8192.
+    df_dim = 64
+    gf_dim = 64
+    ef_dim = 64  
+    lr     = 2e-4
+    beta1  = 0.5
+    beta2  = 0.9
+    f_dim  = 18432.
 
     '''
     model parameters
