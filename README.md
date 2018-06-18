@@ -122,7 +122,7 @@ If you use our code in your research, please cite our paper:
 ## Updates
 2018/06/18:
 - GAAN supports standard CNN architecture of SN-GAN [2].
-- FID results of standard CNN (+ hinge loss) are added.
+- New FID results of standard CNN (+ hinge loss) are added.
 
 ## References
 
