@@ -148,7 +148,7 @@ class GAAN(object):
 
         # Reconstruction and regularization
         self.ae_loss    = tf.reduce_mean(tf.square(self.f_real - self.f_recon))
-        self.md_x       = tf.reduce_mean(self.f_recon - self.f_fake)
+        self.md_x       = tf.reduce_mean(self.f_recon - self.f_fake) #slightly stable than using self.f_real as in the paper.
         self.md_z       = tf.reduce_mean(self.z_e - self.z) * self.lambda_w
         self.ae_reg     = tf.square(self.md_x - self.md_z)
 
