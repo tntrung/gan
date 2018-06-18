@@ -6,7 +6,7 @@ Code accompanying our paper [Generative Adversarial Autoencoder Networks (GAAN)]
 Numpy, scikit-learn, Tensorflow <br>
 
 ### Getting Started
-We conduct experiments of our model with 1D/2D synthetic data, MNIST, CelebA and CIFAR-10 datasets.
+We conduct experiments of our model with 1D/2D synthetic data, MNIST, CelebA, CIFAR-10 and STL-10 datasets.
 
 #### 1D demo
 In addition to GAAN, other methods, such as GAN, MDGAN, VAEGAN, WGAN-GP are provided in our code.
