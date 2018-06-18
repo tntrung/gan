@@ -52,6 +52,38 @@ def read_cifar10(data_dir, filenames):
     print('cifar10 data: {}'.format(np.shape(images)))
     return images, labels
 
+def read_stl10(data_dir):
+    with open(data_dir, 'rb') as f:
+        # read whole file in uint8 chunks
+        everything = np.fromfile(f, dtype=np.uint8)
+
+        # We force the data into 3x96x96 chunks, since the
+        # images are stored in "column-major order", meaning
+        # that "the first 96*96 values are the red channel,
+        # the next 96*96 are green, and the last are blue."
+        # The -1 is since the size of the pictures depends
+        # on the input file, and this way numpy determines
+        # the size on its own.
+
+        images = np.reshape(everything, (-1, 3, 96, 96))
+
+        # Now transpose the images into a standard image format
+        # readable by, for example, matplotlib.imshow
+        # You might want to comment this line or reverse the shuffle
+        # if you will use a learning algorithm like CNN, since they like
+        # their channels separated.
+        images = np.transpose(images, (0, 3, 2, 1))
+
+        images = images.astype(float) / 255.0
+
+        nb_imgs = np.shape(images)[0]
+        new_imgs = np.zeros([nb_imgs, 48, 48, 3])
+        for ii in range(nb_imgs):
+            print(ii, nb_imgs)
+            new_imgs[ii,:,:,:] = resize(images[ii,:,:,:], [48, 48])
+        new_imgs = np.reshape(new_imgs, (-1, 48*48*3))
+    return new_imgs
+
 # processing for celeba dataset
 def preprocess(img):
     crop_size = 108
@@ -98,6 +130,19 @@ class Dataset(object):
                self.num_total_batches = self.nb_compl_batches + 1
             self.count = 0
             self.color_space = 'RGB'
+        #elif name == 'stl10':
+        #    self.data = read_stl10(source)
+        #    self.minibatches = self.random_mini_batches(self.data.T, self.batch_size, self.seed)
+        elif name == 'stl10':
+            # Count number of data images
+            self.im_list  = list_dir(source, 'png')
+            self.nb_imgs  = len(self.im_list)
+            self.nb_compl_batches  = int(math.floor(self.nb_imgs/self.batch_size))
+            self.nb_total_batches     = self.nb_compl_batches
+            if self.nb_imgs % batch_size != 0:
+               self.num_total_batches = self.nb_compl_batches + 1
+            self.count = 0
+            self.color_space = 'RGB'
 
     def db_name(self):
         return self.name
@@ -109,6 +154,8 @@ class Dataset(object):
             return 3072 #32x32x3
         elif self.name == 'celeba':
             return 12288 #64x64x3
+        elif self.name == 'stl10':
+            return 6912 # 48x48x3
         else:
             print('data_dim is unknown.\n')
 
@@ -119,6 +166,8 @@ class Dataset(object):
             return [32, 32, 3]
         elif self.name == 'celeba':
             return [64, 64, 3]
+        elif self.name == 'stl10':
+            return [48, 48, 3]
         else:
             print('data_shape is unknown.\n')
             
@@ -127,14 +176,14 @@ class Dataset(object):
 
     def next_batch(self):
 
-        if self.name == 'mnist' or self.name == 'cifar10':
+        if self.name == 'mnist' or self.name == 'cifar10': #or self.name == 'stl10':
             if self.count == len(self.minibatches):
                 self.count = 0
                 self.minibatches = self.random_mini_batches(self.data.T, self.batch_size, self.seed)
             batch = self.minibatches[self.count]
             self.count = self.count + 1
             return batch.T
-        elif self.name == 'celeba':
+        elif self.name in ['celeba', 'stl10']:
             batch = self.random_mini_batches([], self.batch_size, self.seed)
             return batch
 
@@ -151,7 +200,7 @@ class Dataset(object):
         mini_batches -- list of synchronous (mini_batch_X)
         """
         
-        if self.name == 'mnist' or self.name == 'cifar10':
+        if self.name == 'mnist' or self.name == 'cifar10': #or self.name == 'stl10':
             m = X.shape[1]                  # number of training examples
             mini_batches = []
                 
@@ -172,7 +221,7 @@ class Dataset(object):
             
             return mini_batches
             
-        elif self.name == 'celeba':
+        elif self.name in ['celeba', 'stl10']:
             
             if self.count == 0:
                 self.permutation = list(np.random.permutation(self.nb_imgs))

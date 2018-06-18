@@ -7,7 +7,8 @@ import tensorflow as tf
 import time
 
 from modules.imutils import *
-from modules.models import *
+from modules.models import  *
+from modules.models_sngan import *
 from modules import ops
 
 class GAAN(object):
@@ -18,6 +19,7 @@ class GAAN(object):
 
     def __init__(self, model='gaan', \
                  lambda_p = 1.0, lambda_r = 1.0, lambda_w = 0.15625, \
+                 ncritics = 1, \
                  lr=2e-4, beta1 = 0.5, beta2 = 0.9, noise_dim = 100, \
                  nnet_type='dcgan', \
                  df_dim = 64, gf_dim = 64, ef_dim = 64, \
@@ -80,19 +82,25 @@ class GAAN(object):
         if self.nnet_type == 'dcgan' and self.db_name == 'mnist':
             return discriminator_mnist
         elif self.nnet_type == 'dcgan' and self.db_name == 'cifar10':
-			return discriminator
+            return discriminator
+        elif self.nnet_type == 'sngan' and self.db_name == 'stl10':
+            return discriminator_sngan_stl10
 
     def create_generator(self):
         if self.nnet_type == 'dcgan' and self.db_name == 'mnist':
             return generator_mnist
         elif self.nnet_type == 'dcgan' and self.db_name == 'cifar10':
-			return generator            
-
+            return generator
+        elif self.nnet_type == 'sngan' and self.db_name == 'stl10':
+            return generator_sngan_stl10
+            
     def create_encoder(self):
         if self.nnet_type == 'dcgan' and self.db_name == 'mnist':
-            return encoder_mnist 
+            return encoder_mnist
         elif self.nnet_type == 'dcgan' and self.db_name == 'cifar10':
-			return encoder
+            return encoder
+        elif self.nnet_type == 'sngan' and self.db_name == 'stl10':
+            return encoder_sngan_stl10
 
     def create_optimizer(self, loss, var_list, learning_rate, beta1, beta2):
         """Create the optimizer operation.
@@ -126,9 +134,9 @@ class GAAN(object):
         # create discriminator
         with tf.variable_scope('discriminator'):
             self.D   = self.create_discriminator()
-            self.d_real_sigmoid,  self.d_real_logit,  self.f_real   = self.D(self.X,   self.data_shape, dim = self.gf_dim, reuse=False)
-            self.d_fake_sigmoid,  self.d_fake_logit,  self.f_fake   = self.D(self.X_f, self.data_shape, dim = self.gf_dim, reuse=True)
-            self.d_recon_sigmoid, self.d_recon_logit, self.f_recon  = self.D(self.X_r, self.data_shape, dim = self.gf_dim, reuse=True)
+            self.d_real_sigmoid,  self.d_real_logit,  self.f_real   = self.D(self.X,   self.data_shape, dim = self.df_dim, reuse=False)
+            self.d_fake_sigmoid,  self.d_fake_logit,  self.f_fake   = self.D(self.X_f, self.data_shape, dim = self.df_dim, reuse=True)
+            self.d_recon_sigmoid, self.d_recon_logit, self.f_recon  = self.D(self.X_r, self.data_shape, dim = self.df_dim, reuse=True)
             
             # Compute gradient penalty
             epsilon = tf.random_uniform(shape=[tf.shape(self.X)[0],1], minval=0., maxval=1.)
@@ -195,9 +203,9 @@ class GAAN(object):
                 mb_z = self.sample_z(np.shape(mb_X)[0])
                 
                 if step == 0:
-					# check f_feature size of discriminator
-					f_real = sess.run(self.f_real,feed_dict={self.X: mb_X, self.z: mb_z})
-					print('Feature size: {}'.format(np.shape(f_real)))
+                    # check f_feature size of discriminator
+                    f_real = sess.run(self.f_real,feed_dict={self.X: mb_X, self.z: mb_z})
+                    print('Feature size: {}'.format(np.shape(f_real)))
                 
                 X, X_f, X_r = sess.run([self.X, self.X_f, self.X_r],feed_dict={self.X: mb_X, self.z: mb_z})
                 loss_r, _ = sess.run([self.r_cost, self.opt_r],feed_dict={self.X: mb_X, self.z: mb_z})
