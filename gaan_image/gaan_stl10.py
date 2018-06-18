@@ -9,7 +9,7 @@ if __name__ == '__main__':
     out_dir     = 'output/'
     # downloading stl-10 and extracting it into the correct folder
     db_name     = 'stl10'
-    data_source = '/home/mangroup/Documents/Data/stl10_binary/images/'
+    data_source = './data/stl-10/'
 
     model       = 'gaan'    #'gan', 'wgangp', 'gaan'
     noise_dim   = 128
