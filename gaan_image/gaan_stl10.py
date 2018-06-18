@@ -30,6 +30,9 @@ if __name__ == '__main__':
         beta2  = 0.9
         f_dim  = 18432.
     elif nnet_type == 'dcgan':
+		df_dim = 64
+        gf_dim = 64
+        ef_dim = 64
         lr    = 2e-4
         beta2 = 0.9
         beta1 = 0.5
