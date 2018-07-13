@@ -24,9 +24,9 @@ class GAAN(object):
                  nnet_type='dcgan', \
                  df_dim = 64, gf_dim = 64, ef_dim = 64, \
                  dataset = None, batch_size = 64, \
-                 n_steps = 100000, decay_step = 10000, decay_rate = 1.0,\
+                 n_steps = 400000, decay_step = 10000, decay_rate = 1.0,\
                  log_interval=10, \
-                 out_dir = './output/gaan/', \
+                 out_dir = './output/', \
                  verbose = True):
         """
         Initializing GAAN
@@ -67,6 +67,9 @@ class GAAN(object):
         self.lambda_p  = lambda_p
         self.lambda_r  = lambda_r
         self.lambda_w  = lambda_w
+        
+        self.nb_test_real = 10000
+        self.nb_test_fake = 5000
 
         # others
         self.out_dir      = out_dir
@@ -82,7 +85,7 @@ class GAAN(object):
         if self.nnet_type == 'dcgan' and self.db_name == 'mnist':
             return discriminator_mnist
         elif self.nnet_type == 'dcgan' and self.db_name == 'cifar10':
-            return discriminator
+            return discriminator_cifar
         elif self.nnet_type == 'sngan' and self.db_name == 'stl10':
             return discriminator_sngan_stl10
 
@@ -90,7 +93,7 @@ class GAAN(object):
         if self.nnet_type == 'dcgan' and self.db_name == 'mnist':
             return generator_mnist
         elif self.nnet_type == 'dcgan' and self.db_name == 'cifar10':
-            return generator
+            return generator_cifar
         elif self.nnet_type == 'sngan' and self.db_name == 'stl10':
             return generator_sngan_stl10
             
@@ -98,7 +101,7 @@ class GAAN(object):
         if self.nnet_type == 'dcgan' and self.db_name == 'mnist':
             return encoder_mnist
         elif self.nnet_type == 'dcgan' and self.db_name == 'cifar10':
-            return encoder
+            return encoder_cifar
         elif self.nnet_type == 'sngan' and self.db_name == 'stl10':
             return encoder_sngan_stl10
 
@@ -140,6 +143,7 @@ class GAAN(object):
             
             # Compute gradient penalty
             epsilon = tf.random_uniform(shape=[tf.shape(self.X)[0],1], minval=0., maxval=1.)
+            #epsilon = tf.random_uniform(shape=tf.shape(self.X), minval=0., maxval=1.)
             interpolation = epsilon * self.X + (1 - epsilon) * self.X_f
             _,d_inter,_ = self.D(interpolation, self.data_shape, reuse=True)
             gradients = tf.gradients([d_inter], [interpolation])[0]
@@ -240,3 +244,36 @@ class GAAN(object):
                     im_save_path = os.path.join(self.out_dir,'image_%d_fake.jpg' % (step))
                     im_merge = immerge(im_fake_save, ncols, nrows)
                     imwrite(im_merge, im_save_path)
+                    
+                if step % (self.log_interval*100) == 0:
+                                     
+                    if step == 0:
+                        real_dir = self.out_dir + '/real/'
+                        if not os.path.exists(real_dir):
+                            os.makedirs(real_dir)
+                    fake_dir = self.out_dir + '/fake_%d/'%(step)
+                    if not os.path.exists(fake_dir):
+                        os.makedirs(fake_dir)
+
+                    #generate reals
+                    if step == 0:
+                        for v in range(self.nb_test_real // self.batch_size + 1):
+                            #print(v, self.nb_test_real)
+                            # train auto-encoder
+                            mb_X = self.dataset.next_batch()
+                            im_real_save = np.reshape(mb_X,(-1, self.data_shape[0], self.data_shape[1],self.data_shape[2]))
+                            
+                            for ii in range(np.shape(mb_X)[0]):
+                                real_path = real_dir + '/image_%05d.jpg' % (np.min([v*self.batch_size + ii, self.nb_test_real]))
+                                imwrite(im_real_save[ii,:,:,:], real_path)
+                    elif step > 0:
+                        #generate fake
+                        for v in range(self.nb_test_fake // self.batch_size + 1):
+                            #print(v, self.nb_test_fake)
+                            mb_z = self.sample_z(np.shape(mb_X)[0])
+                            im_fake_save = sess.run(self.X_f,feed_dict={self.z: mb_z})
+                            im_fake_save = np.reshape(im_fake_save,(-1, self.data_shape[0], self.data_shape[1], self.data_shape[2]))
+
+                            for ii in range(np.shape(mb_z)[0]):
+                                fake_path = fake_dir + '/image_%05d.jpg' % (np.min([v*self.batch_size + ii, self.nb_test_fake]))
+                                imwrite(im_fake_save[ii,:,:,:], fake_path)
