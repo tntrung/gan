@@ -1,4 +1,8 @@
+<!---
 Code accompanying our paper [Generative Adversarial Autoencoder Networks (GAAN)](https://arxiv.org/abs/1803.08887)
+--->
+
+Code accompanying our Dist-GAN paper.
 
 ## Setup
 
@@ -107,6 +111,7 @@ FID scores of GAAN for CIFAR-10 and STL-10 datasets are summarized, following ex
 
 *Codes of `hinge loss` and `ResNet` architecture for CIFAR-10 and STL-10 will published soon.*
 
+<!---
 ## Citation
 If you use our code in your research, please cite our paper:
 
@@ -123,6 +128,7 @@ If you use our code in your research, please cite our paper:
 2018/06/18:
 - GAAN supports standard CNN architecture of SN-GAN [2].
 - New FID results of standard CNN (+ hinge loss) are added.
+--->
 
 ## References
 
