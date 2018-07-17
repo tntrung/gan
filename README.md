@@ -2,7 +2,7 @@
 Code accompanying our paper [Generative Adversarial Autoencoder Networks (GAAN)](https://arxiv.org/abs/1803.08887)
 --->
 
-Code accompanying our Dist-GAN paper.
+Code accompanying our Dist-GAN paper. To be updated.
 
 ## Setup
 
