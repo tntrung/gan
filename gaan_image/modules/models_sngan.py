@@ -2,11 +2,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-from modules import ops
+from   modules import ops
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
-
-from functools import partial
+from   functools import partial
 
 conv    = partial(slim.conv2d, activation_fn=None, weights_initializer=tf.contrib.layers.xavier_initializer())
 dconv = partial(slim.conv2d_transpose, activation_fn=None, weights_initializer=tf.contrib.layers.xavier_initializer())

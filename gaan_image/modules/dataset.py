@@ -3,7 +3,6 @@ import glob
 import os
 import numpy as np
 import tensorflow as tf
-
 # for image io
 from skimage import io
 from skimage.transform import resize

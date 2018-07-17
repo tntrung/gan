@@ -5,7 +5,6 @@ from __future__ import absolute_import
 from modules import ops
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
-
 from functools import partial
 
 conv    = partial(slim.conv2d, activation_fn=None, weights_initializer=tf.contrib.layers.xavier_initializer())

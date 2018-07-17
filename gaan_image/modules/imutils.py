@@ -28,7 +28,7 @@ def immerge_row_col(N):
 def immerge(images, row, col):
     """
     merge images into an image with (row * h) * (col * w)
-    `images` is in shape of N * H * W(* C=1 or 3)
+    @images: is in shape of N * H * W(* C=1 or 3)
     """
     h, w = images.shape[1], images.shape[2]
     if images.ndim == 4:

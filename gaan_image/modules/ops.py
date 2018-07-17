@@ -5,7 +5,7 @@ from __future__ import print_function
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
-
+# fully connected layers
 def flatten_fully_connected(inputs,
                             num_outputs,
                             activation_fn=tf.nn.relu,
@@ -38,7 +38,7 @@ def flatten_fully_connected(inputs,
                                     trainable,
                                     scope)
 
-
+# lrelu
 def leak_relu(x, leak, scope=None):
     with tf.name_scope(scope, 'leak_relu', [x, leak]):
         if leak < 1:
