@@ -182,7 +182,7 @@ class GAAN(object):
         self.global_step = tf.Variable(0, trainable=False)
         self.learning_rate = tf.train.exponential_decay(self.lr, self.global_step, self.decay_step, self.decay_rate, staircase=True)
 
-        self.opt_r = self.create_optimizer(self.r_cost, self.vars_e + self.vars_g, self.learning_rate, self.beta1, self.beta2)
+        self.opt_r = self.create_optimizer(self.r_cost, self.vars_e, self.learning_rate, self.beta1, self.beta2)
         self.opt_g = self.create_optimizer(self.g_cost, self.vars_g, self.learning_rate, self.beta1, self.beta2)
         self.opt_d = self.create_optimizer(self.d_cost, self.vars_d, self.learning_rate, self.beta1, self.beta2)
         
