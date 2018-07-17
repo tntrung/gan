@@ -126,7 +126,7 @@ if __name__ == '__main__':
     'rgan'   : Regularized GANs
     'mdgan'  : MDGAN
     'vaegan' : VAEGAN
-    'gaan'   : GAAN
+    'gaan'   : GAAN (or New name Dist-GAN)
     '''
     model = 'gaan'
     data  = Dataset(seed=seed)  # Initialize the toy data object.

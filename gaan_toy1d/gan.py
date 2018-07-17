@@ -1,4 +1,4 @@
-# Generative Adversarial Autoencoder Network (GAAN),
+# Dist-GAN,
 # by Ngoc-Trung Tran and Tuan-Anh Bui, 2018
 # Our tensorflow code is based on:
 # 1) (WGAN-GP) Jan Kremer, 2017: https://github.com/kremerj/gan
@@ -14,7 +14,7 @@ from tensorflow.contrib.keras import layers
 
 
 class GAN(object):
-    """Implementation of the WGAN-GP algorithm.
+    """Implementation of the Dist-GAN and other GAN algorithm.
 
     The models for critic and generator are relatively simple and can be modified for anything more complicated than
     the 1D toy example.
