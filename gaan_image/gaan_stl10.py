@@ -1,6 +1,5 @@
 import os
 import numpy as np
-
 from modules.dataset import Dataset
 from gaan import GAAN
 
