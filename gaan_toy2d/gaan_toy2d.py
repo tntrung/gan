@@ -1,4 +1,4 @@
-# Implementation of GAAN with 2d synthetic data
+# Implementation of Dist-GAN with 2d synthetic data
 # by Ngoc-Trung Tran and Tuan-Anh Bui 2018
 # Contact: tntrung@gmail.com
 # If you use our code, please cite our paper.
