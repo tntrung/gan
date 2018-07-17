@@ -1,4 +1,4 @@
-import numpy as np
+import numpy as np 
 import tensorflow as tf
 
 def xavier_init(size):

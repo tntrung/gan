@@ -1,4 +1,4 @@
-import math
+import math 
 import numpy as np
 import tensorflow as tf
 from model_mlp import theta_def, mlp
