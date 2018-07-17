@@ -19,12 +19,14 @@ In addition to GAAN, other methods, such as GAN, MDGAN, VAEGAN, WGAN-GP are prov
 >> cd gaan_toy1d
 >> python gan_toy1d.py
 ```
+<!---
 Quick video demos, you can reproduce easily these videos with our code:
 
 [GAN](https://www.youtube.com/watch?v=eisFNXbGaNI) <br>
 [WGANGP](https://www.youtube.com/watch?v=5MDBwdfD5rY) (WGAN-GP can match data distribution at some time, but diverged later) <br>
 [VAEGAN](https://www.youtube.com/watch?v=587z8VBcvvQ) <br>
 [GAAN](https://www.youtube.com/watch?v=IjbdMNo4m_8)
+--->
 
 Our 1D code is based on 1D demo references:
 
