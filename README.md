@@ -19,19 +19,15 @@ In addition to GAAN, other methods, such as GAN, MDGAN, VAEGAN, WGAN-GP are prov
 >> cd gaan_toy1d
 >> python gan_toy1d.py
 ```
-<!---
+
 Quick video demos, you can reproduce easily these videos with our code:
 
 [GAN](https://www.youtube.com/watch?v=eisFNXbGaNI) <br>
 [WGANGP](https://www.youtube.com/watch?v=5MDBwdfD5rY) (WGAN-GP can match data distribution at some time, but diverged later) <br>
 [VAEGAN](https://www.youtube.com/watch?v=587z8VBcvvQ) <br>
-[GAAN](https://www.youtube.com/watch?v=IjbdMNo4m_8)
---->
+[Dist-GAN](https://www.youtube.com/watch?v=IjbdMNo4m_8) <br>
 
-Our 1D code is based on 1D demo references:
-
-[1] https://github.com/kremerj/gan <br>
-[2] http://notebooks.aylien.com/research/gan/gan_simple.html
+The visualization part of our 1D code is re-used from [here](https://github.com/kremerj/gan):
 
 #### 2D synthetic data
 ```
@@ -115,7 +111,7 @@ FID scores of GAAN for CIFAR-10 and STL-10 datasets are summarized, following ex
 
 <!---
 ## Citation
-If you use our code in your research, please cite our paper:
+If you find this work useful in your research, please consider citing:
 
 ```
 @article{trung2018gaan,
