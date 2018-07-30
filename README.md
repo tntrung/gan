@@ -1,8 +1,4 @@
-<!---
-Code accompanying our paper [Generative Adversarial Autoencoder Networks (Dist-GAN)](https://arxiv.org/abs/1803.08887)
---->
-
-Code accompanying our Dist-GAN paper. To be updated.
+Code accompanying our (Dist-GAN)[https://arxiv.org/abs/1803.08887] paper.
 
 ## Setup
 
@@ -109,19 +105,20 @@ FID scores of Dist-GAN for CIFAR-10 and STL-10 datasets are summarized, followin
 
 *Codes of `hinge loss` and `ResNet` architecture for CIFAR-10 and STL-10 will published soon.*
 
-<!---
+
 ## Citation
 If you find this work useful in your research, please consider citing:
 
 ```
-@article{trung2018gaan,
-  title={Generative Adversarial Autoencoder Networks},
+@article{trung2018gan,
+  title={Dist-GAN: An Improved GAN using Distance Constraints},
   author={Ngoc-Trung Tran and Tuan-Anh Bui and Ngai-Man Cheung},
   journal={arXiv preprint arXiv:1803.08887},
   year={2018}
 }
 ```
 
+<!---
 ## Updates
 2018/06/18:
 - Dist-GAN supports standard CNN architecture of SN-GAN [2].
