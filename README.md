@@ -110,11 +110,12 @@ FID scores of Dist-GAN for CIFAR-10 and STL-10 datasets are summarized, followin
 If you find this work useful in your research, please consider citing:
 
 ```
-@InProceedings{trung2018gan,
-  Title                    = {Dist-GAN: An Improved GAN using Distance Constraints},
-  Author                   = {Ngoc-Trung Tran and Tuan-Anh Bui and Ngai-Man Cheung},
-  Booktitle                = {ECCV},
-  Year                     = {2018}
+@InProceedings{Tran_2018_ECCV,
+author = {Tran, Ngoc-Trung and Bui, Tuan-Anh and Cheung, Ngai-Man},
+title = {Dist-GAN: An Improved GAN using Distance Constraints},
+booktitle = {The European Conference on Computer Vision (ECCV)},
+month = {September},
+year = {2018}
 }
 ```
 
