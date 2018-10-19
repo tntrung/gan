@@ -13,7 +13,7 @@ In addition to Dist-GAN, other methods, such as GAN, MDGAN, VAEGAN, WGAN-GP are 
 
 ```
 >> cd distgan_toy1d
->> python distgan_toy1d.py
+>> python gan_toy1d.py
 ```
 
 Quick video demos, you can reproduce easily these videos with our code:
