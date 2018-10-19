@@ -3,7 +3,7 @@ import seaborn as sns
 import numpy as np
 
 from matplotlib.animation import ImageMagickWriter
-from gan import GAN
+from distgan import GAN
 
 class Visualization(object):
     """Helper class to visualize the progress of the GAN training procedure.
