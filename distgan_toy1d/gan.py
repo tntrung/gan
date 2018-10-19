@@ -20,8 +20,8 @@ class GAN(object):
     the 1D toy example.
     """
 
-    def __init__(self, model='distgan', n_step=2000, n_critic=5, n_batch=64, n_hidden=4, n_sample=10000, learning_rate=1e-3,
-                 lambda_reg=0.5, log_interval=10, seed=0, beta1=0.5, beta2=0.9, verbose=True, callback=None):
+    def __init__(self, model='distgan', n_step=2000, n_critic=3, n_batch=64, n_hidden=4, n_sample=10000, learning_rate=1e-3,
+                 lambda_reg=0.1, log_interval=10, seed=0, beta1=0.5, beta2=0.9, verbose=True, callback=None):
         """Initialize the GAN.
 
         :param n_step: Number of optimization steps.

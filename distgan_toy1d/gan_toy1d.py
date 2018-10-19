@@ -120,7 +120,7 @@ if __name__ == '__main__':
     seed   = 100  # Fix the random seed
     n_step = 10000  # Run the training procedure for 1450 steps.
     '''
-    'gan'    : GANs
+    'gan'    : GAN
     'wgangp' : WGAN-GP
     'rgan'   : Regularized GANs
     'mdgan'  : MDGAN
