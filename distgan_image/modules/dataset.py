@@ -1,11 +1,14 @@
 import math
 import glob
 import os
-import numpy as np
-import tensorflow as tf
+
 # for image io
 from skimage import io
 from skimage.transform import resize
+
+import numpy as np
+import tensorflow as tf
+
 
 # for mnist
 from tensorflow.examples.tutorials.mnist import input_data
