@@ -3,7 +3,8 @@ Code accompanying our [Dist-GAN](https://arxiv.org/abs/1803.08887) paper.
 ## Setup
 
 ### Dependencies
-Python 2.7, Numpy, scikit-learn, Tensorflow, Keras (1D demo) <br>
+Python 2.7 or 3.x, Numpy, scikit-learn, Tensorflow, Keras (1D demo) <br>
+For Python 3.x - `import pickle` in the file modules/dataset.py 
 
 ### Getting Started
 We conduct experiments of our model with 1D/2D synthetic data, MNIST, CelebA, CIFAR-10 and STL-10 datasets.
