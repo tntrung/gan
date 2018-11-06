@@ -188,10 +188,14 @@ class DISTGAN(object):
             # lower weights for d_recon to achieve sharper generated images, slightly improved from the original paper
             self.d_cost  = 0.95 * self.d_real + 0.05 * self.d_recon + self.d_fake + self.lambda_p * penalty
         elif self.loss_type == 'hinge':
-            self.d_cost = -(0.95 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_real_sigmoid))  + \
-                            0.05 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_recon_sigmoid)) + \
-                            tf.reduce_mean(tf.minimum(0.,-1 - self.d_fake_sigmoid)) + self.lambda_p * self.penalty)
-        
+            #self.d_cost = -(0.95 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_real_sigmoid))  + \
+            #                0.05 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_recon_sigmoid)) + \
+            #                tf.reduce_mean(tf.minimum(0.,-1 - self.d_fake_sigmoid)) + self.lambda_p * self.penalty)
+
+            self.d_cost = -(0.95 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_real_logit))  + \
+                            0.05 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_recon_logit)) + \
+                            tf.reduce_mean(tf.minimum(0.,-1 - self.d_fake_logit)) + self.lambda_p * self.penalty)  
+                                  
         self.r_cost  = self.ae_loss  + self.lambda_r * self.ae_reg
         self.g_cost  = tf.abs(tf.reduce_mean(self.d_real_sigmoid) - tf.reduce_mean(self.d_fake_sigmoid))
 
