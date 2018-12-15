@@ -101,7 +101,7 @@ FID scores of Dist-GAN for CIFAR-10 and STL-10 datasets are summarized, followin
 | WGAN-GP [1]             | 40.2          | 55.1  |
 | SN-GAN  [2]             | 29.3          | 53.1  |
 | SN-GAN (hinge loss) [2] | 25.5          | 43.2  |
-| SN-GAN (ResNet) [2]     | 21.70 +- 0.21| -     |
+| SN-GAN (ResNet) [2]     | 21.70 +- .21| -     |
 | Dist-GAN                | 28.23         | -     |
 | Dist-GAN (hinge loss)   | **22.95**     | **36.19** (100K) |
 | Dist-GAN (ResNet)       | **17.61 +- .30**| -     |
