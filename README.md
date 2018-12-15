@@ -1,4 +1,4 @@
-Code accompanying our [Dist-GAN](https://arxiv.org/abs/1803.08887) and GN-GAN (update soon) papers.
+Code accompanying our [Dist-GAN](https://arxiv.org/abs/1803.08887) and [GN-GAN](https://arxiv.org/abs/1811.01333) (update soon) papers.
 
 ## Setup
 
