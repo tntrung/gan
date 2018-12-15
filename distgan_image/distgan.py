@@ -10,6 +10,7 @@ from modules.imutils import *
 from modules.mdutils import *
 from modules.models_dcgan  import  *
 from modules.models_sngan  import  *
+from modules.models_resnet import  *
 from modules import ops
 
 class DISTGAN(object):
@@ -98,6 +99,10 @@ class DISTGAN(object):
             return discriminator_sngan_cifar            
         elif self.nnet_type == 'sngan' and self.db_name == 'stl10':
             return discriminator_sngan_stl10
+        elif self.nnet_type == 'resnet' and self.db_name == 'cifar10':          
+            return discriminator_resnet_cifar   
+        elif self.nnet_type == 'resnet' and self.db_name == 'stl10':          
+            return discriminator_resnet_stl10               
         else:
             print('The dataset are not supported by the network');
 
@@ -112,6 +117,10 @@ class DISTGAN(object):
             return generator_sngan_cifar            
         elif self.nnet_type == 'sngan' and self.db_name == 'stl10':
             return generator_sngan_stl10
+        elif self.nnet_type == 'resnet' and self.db_name == 'cifar10':
+            return generator_resnet_cifar
+        elif self.nnet_type == 'resnet' and self.db_name == 'stl10':
+            return generator_resnet_stl10               
         else:
             print('The dataset are not supported by the network');
             
@@ -126,6 +135,10 @@ class DISTGAN(object):
             return encoder_dcgan_cifar           
         elif self.nnet_type == 'sngan' and self.db_name == 'stl10':
             return encoder_sngan_stl10
+        elif self.nnet_type == 'resnet' and self.db_name == 'cifar10':
+            return encoder_resnet_cifar  
+        elif self.nnet_type == 'resnet' and self.db_name == 'stl10':
+            return encoder_resnet_stl10              
         else:
             print('The dataset are not supported by the network');            
 
@@ -146,6 +159,7 @@ class DISTGAN(object):
 
         self.X = tf.placeholder(tf.float32, shape=[None, self.data_dim])
         self.z = tf.placeholder(tf.float32, shape=[None, self.noise_dim])
+        self.iteration = tf.placeholder(tf.int32, shape=None)
 
         # create encoder
         with tf.variable_scope('encoder'):
@@ -171,7 +185,7 @@ class DISTGAN(object):
             _,d_inter,_ = self.D(interpolation, self.data_shape, reuse=True)
             gradients = tf.gradients([d_inter], [interpolation])[0]
             slopes = tf.sqrt(tf.reduce_mean(tf.square(gradients), reduction_indices=[1]))
-            penalty = tf.reduce_mean((slopes - 1) ** 2)
+            self.penalty = tf.reduce_mean((slopes - 1) ** 2)
 
         # Reconstruction and regularization
         self.ae_loss    = tf.reduce_mean(tf.square(self.f_real - self.f_recon))
@@ -186,41 +200,74 @@ class DISTGAN(object):
             self.d_recon = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.d_recon_logit,labels=tf.ones_like(self.d_recon_sigmoid)))
             
             # lower weights for d_recon to achieve sharper generated images, slightly improved from the original paper
-            self.d_cost  = 0.95 * self.d_real + 0.05 * self.d_recon + self.d_fake + self.lambda_p * penalty
+            self.d_cost  = 0.95 * self.d_real + 0.05 * self.d_recon + self.d_fake + self.lambda_p * self.penalty
         elif self.loss_type == 'hinge':
-            #self.d_cost = -(0.95 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_real_sigmoid))  + \
-            #                0.05 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_recon_sigmoid)) + \
-            #                tf.reduce_mean(tf.minimum(0.,-1 - self.d_fake_sigmoid)) + self.lambda_p * self.penalty)
-
-            self.d_cost = -(0.95 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_real_logit))  + \
+			
+            if self.nnet_type == 'dcgan':
+				self.d_cost = -(0.95 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_real_logit))  + \
                             0.05 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_recon_logit)) + \
                             tf.reduce_mean(tf.minimum(0.,-1 - self.d_fake_logit)) + self.lambda_p * self.penalty)  
+            else:
+				self.d_cost = -(0.95 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_real_sigmoid))  + \
+                            0.05 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_recon_sigmoid)) + \
+                            tf.reduce_mean(tf.minimum(0.,-1 - self.d_fake_sigmoid)) + self.lambda_p * self.penalty)				
                                   
         self.r_cost  = self.ae_loss  + self.lambda_r * self.ae_reg
         self.g_cost  = tf.abs(tf.reduce_mean(self.d_real_sigmoid) - tf.reduce_mean(self.d_fake_sigmoid))
 
-        # Create optimizers
-        self.vars_e = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='encoder')
-        self.vars_g = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
-        self.vars_d = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator')
-        
-        print('[encoder parameters]')
-        print(self.vars_e)
-        print('[generator parameters]')
-        print(self.vars_g)
-        print('[discriminator parameters]')
-        print(self.vars_d)
 
-        # Setup for weight decay
-        self.global_step = tf.Variable(0, trainable=False)
-        self.learning_rate = tf.train.exponential_decay(self.lr, self.global_step, self.decay_step, self.decay_rate, staircase=True)
+		# Create optimizers        
+        if self.nnet_type == 'resnet':
 
-        if self.db_name in ['mnist', 'celeba']:
-            self.opt_r = self.create_optimizer(self.r_cost, self.vars_e + self.vars_g, self.learning_rate, self.beta1, self.beta2)
+            self.vars_g = [var for var in tf.trainable_variables() if 'generator' in var.name]
+            print('[generator parameters]')
+            print(self.vars_g) 
+            self.vars_d = [var for var in tf.trainable_variables() if 'discriminator' in var.name]
+            print('[discriminator parameters]')
+            print(self.vars_d)
+            self.vars_e = [var for var in tf.trainable_variables() if 'encoder' in var.name]
+            print('[encoder parameters]')
+            print(self.vars_e)
+            
+            print('[decay the learning rate and network type: resnet]')
+            self.decay_rate = tf.maximum(0., tf.minimum(1.-(tf.cast(self.iteration, tf.float32)/self.n_steps),0.5))
+            
+            self.opt_rec = tf.train.AdamOptimizer(learning_rate=self.lr * self.decay_rate, beta1=self.beta1, beta2=self.beta2)
+            self.opt_gen = tf.train.AdamOptimizer(learning_rate=self.lr * self.decay_rate, beta1=self.beta1, beta2=self.beta2)
+            self.opt_dis = tf.train.AdamOptimizer(learning_rate=self.lr * self.decay_rate, beta1=self.beta1, beta2=self.beta2)
+            
+            self.gen_gv  = self.opt_gen.compute_gradients(self.g_cost, var_list=self.vars_g)
+            self.dis_gv  = self.opt_dis.compute_gradients(self.d_cost, var_list=self.vars_d)
+            self.rec_gv  = self.opt_rec.compute_gradients(self.r_cost, var_list=self.vars_e)
+            
+            self.opt_r  = self.opt_rec.apply_gradients(self.rec_gv)    
+            self.opt_g  = self.opt_gen.apply_gradients(self.gen_gv)
+            self.opt_d  = self.opt_dis.apply_gradients(self.dis_gv)
+            
         else:
-            self.opt_r = self.create_optimizer(self.r_cost, self.vars_e, self.learning_rate, self.beta1, self.beta2)
-        self.opt_g = self.create_optimizer(self.g_cost, self.vars_g, self.learning_rate, self.beta1, self.beta2)
-        self.opt_d = self.create_optimizer(self.d_cost, self.vars_d, self.learning_rate, self.beta1, self.beta2)
+            
+			# Create optimizers
+			self.vars_e = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='encoder')
+			self.vars_g = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
+			self.vars_d = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator')
+			
+			print('[encoder parameters]')
+			print(self.vars_e)
+			print('[generator parameters]')
+			print(self.vars_g)
+			print('[discriminator parameters]')
+			print(self.vars_d)
+
+			# Setup for weight decay
+			self.global_step = tf.Variable(0, trainable=False)
+			self.learning_rate = tf.train.exponential_decay(self.lr, self.global_step, self.decay_step, self.decay_rate, staircase=True)
+
+			if self.db_name in ['mnist', 'celeba']:
+				self.opt_r = self.create_optimizer(self.r_cost, self.vars_e + self.vars_g, self.learning_rate, self.beta1, self.beta2)
+			else:
+				self.opt_r = self.create_optimizer(self.r_cost, self.vars_e, self.learning_rate, self.beta1, self.beta2)
+			self.opt_g = self.create_optimizer(self.g_cost, self.vars_g, self.learning_rate, self.beta1, self.beta2)
+			self.opt_d = self.create_optimizer(self.d_cost, self.vars_d, self.learning_rate, self.beta1, self.beta2)
         
         self.init = tf.global_variables_initializer()
 
@@ -249,18 +296,18 @@ class DISTGAN(object):
                     f_real = sess.run(self.f_real,feed_dict={self.X: mb_X, self.z: mb_z})
                     print('=== Important!!!: Put this feature size: {} feature_dim of the main function ==='.format(np.shape(f_real)))
                 
-                X, X_f, X_r = sess.run([self.X, self.X_f, self.X_r],feed_dict={self.X: mb_X, self.z: mb_z})
-                loss_r, _ = sess.run([self.r_cost, self.opt_r],feed_dict={self.X: mb_X, self.z: mb_z})
+                X, X_f, X_r = sess.run([self.X, self.X_f, self.X_r],feed_dict={self.X: mb_X, self.z: mb_z, self.iteration: step})
+                loss_r, _ = sess.run([self.r_cost, self.opt_r],feed_dict={self.X: mb_X, self.z: mb_z, self.iteration: step})
 
                 # train discriminator
                 mb_X = self.dataset.next_batch()
                 mb_z = self.sample_z(np.shape(mb_X)[0])
-                loss_d, _ = sess.run([self.d_cost, self.opt_d],feed_dict={self.X: mb_X, self.z: mb_z})
+                loss_d, _ = sess.run([self.d_cost, self.opt_d],feed_dict={self.X: mb_X, self.z: mb_z, self.iteration: step})
 
                 # train generator
                 mb_X = self.dataset.next_batch()
                 mb_z = self.sample_z(np.shape(mb_X)[0])
-                loss_g, _ = sess.run([self.g_cost, self.opt_g],feed_dict={self.X: mb_X, self.z: mb_z})
+                loss_g, _ = sess.run([self.g_cost, self.opt_g],feed_dict={self.X: mb_X, self.z: mb_z, self.iteration: step})
 
                 if step % self.log_interval == 0:
                     if self.verbose:
