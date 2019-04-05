@@ -217,9 +217,9 @@ class Dataset(object):
                 mini_batches.append(mini_batch_X)
             
             # Handling the end case (last mini-batch < mini_batch_size)
-            if m % mini_batch_size != 0:
-                mini_batch_X = shuffled_X[:, num_complete_minibatches * self.batch_size : m]
-                mini_batches.append(mini_batch_X)
+            #if m % mini_batch_size != 0:
+            #    mini_batch_X = shuffled_X[:, num_complete_minibatches * self.batch_size : m]
+            #    mini_batches.append(mini_batch_X)
             
             return mini_batches
             
@@ -231,8 +231,8 @@ class Dataset(object):
             elif self.count > 0 and self.count < self.nb_compl_batches:
                 cur_batch = self.permutation[self.count * self.batch_size : (self.count + 1) * self.batch_size]                           
             elif self.count == self.nb_compl_batches and self.num_total_batches > self.nb_compl_batches:
-                cur_batch = self.permutation[self.nb_compl_batches * self.batch_size : self.nb_imgs]
-            elif self.count >= self.num_total_batches:
+            #    cur_batch = self.permutation[self.nb_compl_batches * self.batch_size : self.nb_imgs]
+            #elif self.count >= self.num_total_batches:
                 self.count = 0
                 self.permutation = list(np.random.permutation(self.nb_imgs))
                 cur_batch = self.permutation[self.count * self.batch_size : (self.count + 1) * self.batch_size]                
