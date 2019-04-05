@@ -10,7 +10,8 @@ if __name__ == '__main__':
     # downloading celeba from [https://www.dropbox.com/sh/8oqt9vytwxb3s4r/AAB06FXaQRUNtjW9ntaoPGvCa?dl=0]
     # and extracting it into the correct folder (should be prepared by yourself)
     db_name     = 'celeba'
-    data_source = './data/celeba/'
+    #data_source = './data/celeba/'
+    data_source = '/home/mangroup/Documents/Code/Generative_Adversarial_Network/gaan/gaan_image/data/celeba/'
     
     model     = 'distgan'
     nnet_type = 'dcgan'

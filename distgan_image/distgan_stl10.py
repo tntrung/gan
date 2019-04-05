@@ -9,10 +9,10 @@ if __name__ == '__main__':
     # downloading stl-10 and extracting it into the correct folder
     db_name     = 'stl10'
     data_source = './data/stl-10/'
-
+    
     model     = 'distgan' 
-    nnet_type = 'sngan'   #'dcgan', 'sngan', 'resnet'
-    loss_type = 'hinge'   #'log' or 'hinge'
+    nnet_type = 'sngan' #'sngan', 'resnet'
+    loss_type = 'hinge' #'log' or 'hinge'
     
     is_train = True
     
@@ -24,9 +24,15 @@ if __name__ == '__main__':
     n_steps     = 300000
 
     if nnet_type == 'resnet':
+        df_dim = 64
+        gf_dim = 64
+        ef_dim = 64
         beta1  = 0.0
-        beta2  = 0.9
+        beta2  = 0.9        
     else:
+        df_dim = 64
+        gf_dim = 64
+        ef_dim = 64
         beta1  = 0.5
         beta2  = 0.9
             
@@ -37,7 +43,10 @@ if __name__ == '__main__':
     '''
     feature dim
     '''
-    feature_dim = 18432.
+    if nnet_type == 'sngan':
+        feature_dim = 18432.
+    elif nnet_type == 'resnet':
+        feature_dim = 9216.
 
     '''
     model parameters

@@ -11,12 +11,12 @@ if __name__ == '__main__':
     # and extracting it into the correct folder
     db_name     = 'cifar10'
     data_source = './data/cifar10/'
-   
+       
     is_train = True
     
     model     = 'distgan' 
-    nnet_type = 'resnet'  #'dcgan', 'sngan', 'resnet'
-    loss_type = 'hinge'   #'log' or 'hinge'
+    nnet_type = 'resnet' #'dcgan', 'sngan', 'resnet'
+    loss_type = 'hinge'  #'log' or 'hinge'
     '''
     model parameters
     '''
@@ -27,7 +27,11 @@ if __name__ == '__main__':
     sngan: 8192
     resnet 8192
     '''
-    feature_dim  = 8192
+    if nnet_type == 'sngan' or \
+       nnet_type == 'resnet':
+		feature_dim = 8192
+    elif nnet_type == 'dcgan':
+		feature_dim = 2048
     
     if nnet_type == 'resnet':
         df_dim = 128

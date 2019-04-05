@@ -1,22 +1,17 @@
-"""WGAN-GP ResNet for CIFAR-10"""
-
-import os, sys
-sys.path.append(os.getcwd())
-
-import modules.tflib_ops as lib
-import modules.tflib_ops.linear
-import modules.tflib_ops.cond_batchnorm
-import modules.tflib_ops.conv2d
-import modules.tflib_ops.deconv2d
-import modules.tflib_ops.batchnorm
-import modules.tflib_ops.layernorm
+"""Modified from SAGAN: https://github.com/brain-research/self-attention-gan"""
 
 import numpy as np
 import tensorflow as tf
 
 from functools import partial
 import functools
+from sagan_ops import ops
 
+'''
+========================================================================
+Utils functions
+========================================================================
+'''
 def leak_relu(x, leak, scope=None):
     with tf.name_scope(scope, 'leak_relu', [x, leak]):
         if leak < 1:
@@ -25,176 +20,510 @@ def leak_relu(x, leak, scope=None):
             y = tf.minimum(x, leak * x)
         return y
 
-lrelu = partial(leak_relu, leak=0.2) # 0.2 as in GAAN, 0.1 as in SNGAN
+lrelu = partial(leak_relu, leak=0.2)
 
-def nonlinearity(name, x):
-    if 'encoder' in name:
-       return lrelu(x)
-    else:
-		return tf.nn.relu(x)
+def upscale(x, n):
+  """Builds box upscaling (also called nearest neighbors).
 
-def Normalize(name, inputs, num_classes = None, labels = None):
+  Args:
+    x: 4D image tensor in B01C format.
+    n: integer scale (must be a power of 2).
 
-    if ('generator' in name or 'encoder' in name):
-        if labels is not None:
-            labels = tf.squeeze(labels)
-            return lib.cond_batchnorm.Batchnorm(name,[0,2,3],inputs,labels=labels,n_labels=num_classes)
+  Returns:
+    4D tensor of images up scaled by a factor n.
+  """
+  if n == 1:
+    return x
+  return tf.batch_to_space(tf.tile(x, [n**2, 1, 1, 1]), [[0, 0], [0, 0]], n)
+
+
+def usample_tpu(x):
+  """Upscales the width and height of the input vector by a factor of 2."""
+  x = upscale(x, 2)
+  return x
+
+def usample(x):
+  _, nh, nw, nx = x.get_shape().as_list()
+  x = tf.image.resize_nearest_neighbor(x, [nh * 2, nw * 2])
+  return x
+
+def dsample_pool(x, name = 'dsample'): #original of SAGAN
+  """Downsamples the image by a factor of 2."""
+  xd = tf.nn.avg_pool(x, [1, 2, 2, 1], [1, 2, 2, 1], 'VALID')
+  return xd
+
+def dsample_conv(x, name = 'dsample'):
+  """Downsamples the image by a factor of 2."""
+  xd = ops.conv2d(x, x.get_shape().as_list()[-1], 1, 1, 2, 2, name=name)
+  return xd
+
+def hw_flatten(x):
+    return tf.reshape(x, shape=[tf.shape(x)[0], -1, tf.shape(x)[-1]])
+        
+'''
+========================================================================
+Resnet blocks
+========================================================================
+'''
+def g_block(x, out_channels, is_training, name):
+  """Builds the residual blocks used in the generator.
+
+  Compared with block, optimized_block always downsamples the spatial
+  resolution of the input vector by a factor of 4.
+
+  Args:
+    x: The 4D input vector.
+    out_channels: Number of features in the output layer.
+    name: The variable scope name for the block.
+  Returns:
+    A `Tensor` representing the output of the operation.
+  """
+  with tf.variable_scope(name):
+    
+    bn0 = ops.batch_norm(name='bn0')
+    bn1 = ops.batch_norm(name='bn1')
+    
+    x_0 = x
+    x = tf.nn.relu(bn0(x, train = is_training))
+    x = usample(x)
+    x = ops.conv2d(x, out_channels, 3, 3, 1, 1, name='conv1')
+    x = tf.nn.relu(bn1(x, train = is_training))
+    x = ops.conv2d(x, out_channels, 3, 3, 1, 1, name='conv2')
+
+    x_0 = usample(x_0)
+    x_0 = ops.conv2d(x_0, out_channels, 1, 1, 1, 1, name='conv3')
+
+    return x_0 + x
+
+def e_block(x, out_channels, is_training, name, downsample=True, \
+                                                        act=tf.nn.relu):
+  """Builds the residual blocks used in the discriminator in SNGAN.
+
+  Args:
+    x: The 4D input vector.
+    out_channels: Number of features in the output layer.
+    name: The variable scope name for the block.
+    update_collection: The update collections used in the
+                       spectral_normed_weight.
+    downsample: If True, downsample the spatial size the input tensor by
+                a factor of 4. If False, the spatial size of the input 
+                tensor is unchanged.
+    act: The activation function used in the block.
+  Returns:
+    A `Tensor` representing the output of the operation.
+  """
+  with tf.variable_scope(name):
+      
+    bn0 = ops.batch_norm(name='bn0')
+    bn1 = ops.batch_norm(name='bn1')
+    
+    input_channels = x.get_shape().as_list()[-1]
+    x_0 = x
+    x = act(bn0(x, train = is_training))
+    x = ops.conv2d(x, out_channels, 3, 3, 1, 1, name='conv1')
+    x = act(bn1(x, train = is_training))
+    x = ops.conv2d(x, out_channels, 3, 3, 1, 1, name='conv2')
+    if downsample:
+      x = dsample_pool(x, "e_dsample_1")
+    if downsample or input_channels != out_channels:
+      x_0 = ops.conv2d(x_0, out_channels, 1, 1, 1, 1, name='conv3')
+      if downsample:
+        x_0 = dsample_pool(x_0, "e_dsample_2")
+    return x_0 + x
+    
+def g_block_cond(x, out_channels, num_classes, labels, is_training, name):
+  """Builds the residual blocks used in the generator.
+
+  Compared with block, optimized_block always downsamples the spatial 
+  resolution of the input vector by a factor of 4.
+
+  Args:
+    x: The 4D input vector.
+    labels: The conditional labels in the generation.
+    out_channels: Number of features in the output layer.
+    num_classes: Number of classes in the labels.
+    name: The variable scope name for the block.
+  Returns:
+    A `Tensor` representing the output of the operation.
+  """
+  with tf.variable_scope(name):
+    bn0 = ops.ConditionalBatchNorm(num_classes, name='cbn0')
+    bn1 = ops.ConditionalBatchNorm(num_classes, name='cbn1')
+    x_0 = x
+    x = tf.nn.relu(bn0(x, labels, is_training))
+    x = usample(x)
+    x = ops.conv2d(x, out_channels, 3, 3, 1, 1, name='conv1')
+    x = tf.nn.relu(bn1(x, labels, is_training))
+    x = ops.conv2d(x, out_channels, 3, 3, 1, 1, name='conv2')
+
+    x_0 = usample(x_0)
+    x_0 = ops.conv2d(x_0, out_channels, 1, 1, 1, 1, name='conv3')
+
+    return x_0 + x
+
+
+def e_block_cond(x, out_channels, num_classes, labels, \
+                    is_training, name, downsample=True, act=tf.nn.relu):
+  """Builds the residual blocks used in the discriminator in SNGAN.
+
+  Args:
+    x: The 4D input vector.
+    out_channels: Number of features in the output layer.
+    name: The variable scope name for the block.
+    update_collection: The update collections used in the
+                       spectral_normed_weight.
+    downsample: If True, downsample the spatial size the input tensor by
+                a factor of 4. If False, the spatial size of the input 
+                tensor is unchanged.
+    act: The activation function used in the block.
+  Returns:
+    A `Tensor` representing the output of the operation.
+  """
+  with tf.variable_scope(name):
+      
+    bn0 = ops.ConditionalBatchNorm(num_classes, name='cbn0')
+    bn1 = ops.ConditionalBatchNorm(num_classes, name='cbn1')
+    
+    input_channels = x.get_shape().as_list()[-1]
+    x_0 = x
+    x = act(bn0(x, labels, is_training = is_training))
+    x = ops.conv2d(x, out_channels, 3, 3, 1, 1, name='conv1')
+    x = act(bn1(x, labels, is_training = is_training))
+    x = ops.conv2d(x, out_channels, 3, 3, 1, 1, name='conv2')
+    if downsample:
+      x = dsample_pool(x, "e_dsample_1")
+    if downsample or input_channels != out_channels:
+      x_0 = ops.conv2d(x_0, out_channels, 1, 1, 1, 1, name='conv3')
+      if downsample:
+        x_0 = dsample_pool(x_0, "e_dsample_2")
+    return x_0 + x
+        
+def d_block(x, out_channels, name, downsample=True, act=tf.nn.relu):
+  """Builds the residual blocks used in the discriminator in SNGAN.
+
+  Args:
+    x: The 4D input vector.
+    out_channels: Number of features in the output layer.
+    name: The variable scope name for the block.
+    update_collection: The update collections used in the
+                       spectral_normed_weight.
+    downsample: If True, downsample the spatial size the input tensor by
+                a factor of 4. If False, the spatial size of the input 
+                tensor is unchanged.
+    act: The activation function used in the block.
+  Returns:
+    A `Tensor` representing the output of the operation.
+  """
+  with tf.variable_scope(name):
+    input_channels = x.get_shape().as_list()[-1]
+    x_0 = x
+    x = act(x)
+    x = ops.conv2d(x, out_channels, 3, 3, 1, 1, name='conv1')
+    x = act(x)
+    x = ops.conv2d(x, out_channels, 3, 3, 1, 1, name='conv2')
+    if downsample:
+      x = dsample_conv(x, "d_dsample_1")
+    if downsample or input_channels != out_channels:
+      x_0 = ops.conv2d(x_0, out_channels, 1, 1, 1, 1, name='conv3')
+      if downsample:
+        x_0 = dsample_conv(x_0, "d_dsample_2")
+    return x_0 + x
+
+
+def optimized_block(x, out_channels, name, act=tf.nn.relu):
+  """Builds the simplified residual blocks for downsampling.
+
+  Compared with block, optimized_block always downsamples the spatial
+  resolution of the input vector by a factor of 4.
+
+  Args:
+    x: The 4D input vector.
+    out_channels: Number of features in the output layer.
+    name: The variable scope name for the block.
+    update_collection: The update collections used in the
+                       spectral_normed_weight.
+    act: The activation function used in the block.
+  Returns:
+    A `Tensor` representing the output of the operation.
+  """
+  with tf.variable_scope(name):
+    x_0 = x
+    x = ops.conv2d(x, out_channels, 3, 3, 1, 1, name='conv1')
+    x = act(x)
+    x = ops.conv2d(x, out_channels, 3, 3, 1, 1, name='conv2')
+    x = dsample_conv(x, "o_dsample_1")
+    x_0 = dsample_conv(x_0, "o_dsample_2")
+    x_0 = ops.conv2d(x_0, out_channels, 1, 1, 1, 1, name='conv3')
+    return x + x_0
+      
+'''
+========================================================================
+ResNet for CIFAR-10 (32x32)
+========================================================================
+'''
+
+def encoder_resnet_cifar(x, x_shape, z_dim=128, dim=128, \
+                         num_classes = None, labels = None, \
+                         name = 'encoder', \
+                         update_collection=None, \
+                                         reuse=False, is_training=True):
+                                             
+    global count_reuse
+                                             
+    if labels is not None:
+        labels = tf.squeeze(labels)
+    dim = dim * 2 # 256 like sn-gan paper
+    act = lrelu
+    is_conditional = num_classes is not None and labels is not None
+    with tf.variable_scope(name, reuse=reuse):
+        image = tf.reshape(x, [-1, x_shape[0], x_shape[1], x_shape[2]])
+        image = ops.conv2d(image, dim, 3, 3, 1, 1, \
+                                               name='e_conv0') # 32 * 32
+        if is_conditional:
+            act0  = e_block_cond(image, dim,\
+                                    num_classes = num_classes, \
+                                    labels = labels,\
+                                    is_training = is_training,\
+                                    name = 'e_block1', act=act)# 16 * 16            
         else:
-            return lib.batchnorm.Batchnorm(name,[0,2,3],inputs,fused=True)
-    else:
-        return inputs
+            act0  = e_block(image, dim, is_training = is_training,\
+                                    name = 'e_block1', act=act)# 16 * 16
+                                    
+        if is_conditional:
+            act1 = e_block_cond(act0, dim, \
+                                      num_classes, labels,\
+                                      is_training = is_training,\
+                                      name = 'e_block2', act=act)# 8 * 8            
+        else:
+            act1 = e_block(act0, dim, is_training, \
+                                      name = 'e_block2', act=act)# 8 * 8
+                                     
+        if is_conditional:
+            act2 = e_block_cond(act1, dim, \
+                                 num_classes, labels, \
+                                 is_training = is_training,\
+                                 name =  'e_block3', act=act)    # 4 * 4            
+        else:                              
+            act2 = e_block(act1, dim, is_training, \
+                                 name =  'e_block3', act=act)    # 4 * 4
+                                 
+        if is_conditional:
+            bn   = ops.batch_norm(num_classes, name='e_bn')
+        else:                     
+            bn   = ops.batch_norm(name='e_bn')
+        act2 = act(bn(act2, is_training))                 
+        act2 = tf.reshape(act2, [-1, 4 * 4 * dim])                      
+        out  = ops.linear(act2, z_dim)
+        return out
 
-def ConvMeanPool(name, input_dim, output_dim, filter_size, inputs, he_init=True, biases=True):
-    output = lib.conv2d.Conv2D(name, input_dim, output_dim, filter_size, inputs, he_init=he_init, biases=biases)
-    output = tf.add_n([output[:,:,::2,::2], output[:,:,1::2,::2], output[:,:,::2,1::2], output[:,:,1::2,1::2]]) / 4.
-    return output
+def generator_resnet_cifar(z, x_shape, dim=128, \
+                           num_classes = None, labels = None, \
+                           name = 'generator', reuse=False, \
+                           is_training=True):
 
-def MeanPoolConv(name, input_dim, output_dim, filter_size, inputs, he_init=True, biases=True):
-    output = inputs
-    output = tf.add_n([output[:,:,::2,::2], output[:,:,1::2,::2], output[:,:,::2,1::2], output[:,:,1::2,1::2]]) / 4.
-    output = lib.conv2d.Conv2D(name, input_dim, output_dim, filter_size, output, he_init=he_init, biases=biases)
-    return output
+    if labels is not None:
+        labels = tf.squeeze(labels)
+    dim = dim * 2 # 256 like sn-gan paper
+    x_dim = x_shape[0] * x_shape[1] * x_shape[2]
+    is_conditional = num_classes is not None and labels is not None
+    with tf.variable_scope(name, reuse=reuse):
+        act0 = ops.linear(z, dim * 4 * 4, scope='g_linear0')
+        act0 = tf.reshape(act0, [-1, 4, 4, dim])
+        if is_conditional:
+            act1 = g_block_cond(act0, dim, num_classes, labels, \
+                                       is_training, 'g_block1')  # 8 * 8
+        else:
+            act1 = g_block(act0, dim, is_training, 'g_block1')   # 8 * 8
+            
+        if is_conditional:
+            act2 = g_block_cond(act1, dim, num_classes, labels, \
+                                      is_training, 'g_block2') # 16 * 16
+        else:   
+            act2 = g_block(act1, dim, is_training, 'g_block2') # 16 * 16
+        if is_conditional:
+            act3 = g_block_cond(act2, dim, num_classes, labels, \
+                                      is_training, 'g_block3') # 32 * 32
+        else:
+            act3 = g_block(act2, dim, is_training, 'g_block3') # 32 * 32
+        if is_conditional:
+            bn   = ops.batch_norm(num_classes, name='g_bn')
+        else:
+            bn   = ops.batch_norm(name='g_bn')
+        act3 = tf.nn.relu(bn(act3, is_training))
+        act4 = ops.conv2d(act3, 3, 3, 3, 1, 1, name='g_conv_last')
+        out  = tf.nn.sigmoid(act4)
+        return tf.reshape(out, [-1, x_dim])
+        
 
-def UpsampleConv(name, input_dim, output_dim, filter_size, inputs, he_init=True, biases=True):
-    output = inputs
-    output = tf.concat([output, output, output, output], axis=1)
-    output = tf.transpose(output, [0,2,3,1])
-    output = tf.depth_to_space(output, 2)
-    output = tf.transpose(output, [0,3,1,2])
-    output = lib.conv2d.Conv2D(name, input_dim, output_dim, filter_size, output, he_init=he_init, biases=biases)
-    return output   
+def discriminator_resnet_cifar(x, x_shape, dim=128, \
+                            num_classes = None, labels = None, \
+                            name = 'discriminator',\
+                            update_collection=None, reuse=False):
+
+  """Builds the discriminator graph.
+
+  Args:
+    x: The current batch of images to classify as fake or real.
+    x_shape: the shape [h x w x c] of image
+    dim: The d dimension.
+    update_collection: The update collections used in the
+                       spectral_normed_weight.
+  Returns:
+    A `Tensor` representing the logits of the discriminator.
+  """
+  if labels is not None:
+     labels = tf.squeeze(labels)
+  relu=tf.nn.relu
+  is_conditional = num_classes is not None and labels is not None
+  with tf.variable_scope(name, reuse=reuse):
     
-def ResidualBlock1(name, input_dim, output_dim, filter_size, inputs, resample=None, no_dropout=False, num_classes = None, labels = None):
-    """
-    resample: None, 'down', or 'up'
-    """
-    if resample=='down':
-        conv_1        = functools.partial(lib.conv2d.Conv2D, input_dim=input_dim, output_dim=input_dim)
-        conv_2        = functools.partial(lib.conv2d.Conv2D, input_dim=input_dim, output_dim=output_dim, stride=2)
-        conv_shortcut = ConvMeanPool
-    elif resample=='up':
-        conv_1        = functools.partial(UpsampleConv, input_dim=input_dim, output_dim=output_dim)
-        conv_shortcut = UpsampleConv
-        conv_2        = functools.partial(lib.conv2d.Conv2D, input_dim=output_dim, output_dim=output_dim)
-    elif resample==None:
-        conv_shortcut = lib.conv2d.Conv2D
-        conv_1        = functools.partial(lib.conv2d.Conv2D, input_dim=input_dim, output_dim=output_dim)
-        conv_2        = functools.partial(lib.conv2d.Conv2D, input_dim=output_dim, output_dim=output_dim)
-    else:
-        raise Exception('invalid resample value')
-
-    if output_dim==input_dim and resample==None:
-        shortcut = inputs # Identity skip-connection
-    else:
-        shortcut = conv_shortcut(name+'.Shortcut', input_dim=input_dim, output_dim=output_dim, filter_size=1, he_init=False, biases=True, inputs=inputs)
-
-    output = inputs
-    output = Normalize(name+'.N1', output, num_classes=num_classes, labels=labels)
-    output = nonlinearity(name, output)
-    output = conv_1(name+'.Conv1', filter_size=filter_size, inputs=output)    
-    output = Normalize(name+'.N2', output, num_classes=num_classes, labels=labels)
-    output = nonlinearity(name, output)            
-    output = conv_2(name+'.Conv2', filter_size=filter_size, inputs=output)
-
-    return shortcut + output 
-
+    image = tf.reshape(x, [-1, x_shape[0], x_shape[1], x_shape[2]])
+    h0 = optimized_block(image, dim, 'd_optimized_block1', \
+                                             act=relu) # 16 * 16
+    h1 = d_block(h0, dim, 'd_block2', act=relu)        # 8 * 8
+    h2 = d_block(h1, dim, 'd_block3', None, act=relu)  # 8 * 8
+    h3 = d_block(h2, dim, 'd_block4', None, act=relu)  # 8 * 8
+    h3_act = relu(h3)
+    feat   = tf.reshape(h3_act,[-1, 8 * 8 * dim])
+    h4     = tf.reduce_sum(h3_act, [1, 2])
+    out    = ops.linear(h4, 1, scope = 'linear_out')
+    
+    if is_conditional:
+        h_labels = ops.sn_embedding(labels, num_classes, dim,
+                                update_collection=update_collection,
+                                name='d_embedding')
+        out += tf.reduce_sum(h4 * h_labels, axis=1, keep_dims=True)
+    
+    return tf.sigmoid(out), out, tf.reshape(feat, [-1, 512 * 4 * 4])
    
-def OptimizedResBlockDisc1(inputs, dim):
-    conv_1      = functools.partial(lib.conv2d.Conv2D, input_dim=3, output_dim=dim)
-    conv_2      = functools.partial(lib.conv2d.Conv2D, input_dim=dim, output_dim=dim, stride=2)
-    conv_shortcut = MeanPoolConv
-    shortcut = conv_shortcut('discriminator.1.Shortcut', input_dim=3, output_dim=dim, filter_size=1, he_init=False, biases=True, inputs=inputs)
 
-    output = inputs
-    output = conv_1('discriminator.1.Conv1', filter_size=3, inputs=output)    
-    output = nonlinearity('discriminator', output)            
-    output = conv_2('discriminator.1.Conv2', filter_size=3, inputs=output)
-    return shortcut + output
-    
-def encoder_resnet_cifar(inputs, x_shape, z_dim=128, dim=128, num_classes = None, labels = None, name = 'encoder', reuse=False):
-    #transform to NCHW to use tflib
-    dim = dim * 2 #256
-    output = tf.transpose(tf.reshape(inputs, [-1, x_shape[0], x_shape[1], x_shape[2]]), perm=[0, 3, 1, 2])
-    output = lib.conv2d.Conv2D('encoder.Input', 3, dim, 3, output, he_init=False) 										 #32x32
-    output = ResidualBlock1('encoder.1', dim, dim, 3, output, resample='down', num_classes=num_classes, labels=labels)   #16x16
-    output = ResidualBlock1('encoder.2', dim, dim, 3, output, resample='down', num_classes=num_classes, labels=labels)   #8x8
-    output = ResidualBlock1('encoder.3', dim, dim, 3, output, resample='down', num_classes=num_classes, labels=labels)   #4x4
-    output = Normalize('encoder.OutputN', output, num_classes=num_classes, labels=labels)
-    output = nonlinearity('encoder', output)
-    output = tf.reshape(output, [-1, dim * 4 * 4])
-    output = lib.linear.Linear('encoder.Output', dim * 4 * 4, z_dim, output)
-    return output
 
-def encoder_resnet_stl10(inputs, x_shape, z_dim=128, dim=128, num_classes = None, labels = None, name = 'encoder', reuse=False):
-    #transform to NCHW to use tflib
-    output = tf.transpose(tf.reshape(inputs, [-1, x_shape[0], x_shape[1], x_shape[2]]), perm=[0, 3, 1, 2])
-    output = lib.conv2d.Conv2D('encoder.Input', 3, dim, 3, output, he_init=False)  #32x32
-    output = ResidualBlock1('encoder.1', dim, dim*2, 3, output, resample='down', num_classes=num_classes, labels=labels)   #16x16
-    output = ResidualBlock1('encoder.2', dim*2, dim*4, 3, output, resample='down', num_classes=num_classes, labels=labels) #8x8
-    output = ResidualBlock1('encoder.3', dim*4, dim*8, 3, output, resample='down', num_classes=num_classes, labels=labels) #4x4
-    output = Normalize('encoder.OutputN', output, num_classes=num_classes, labels=labels)
-    output = nonlinearity('encoder', output)
-    output = tf.reshape(output, [-1, dim*8 * 6 * 6])
-    output = lib.linear.Linear('encoder.Output', dim*8 * 6 * 6, z_dim, output)
-    return output
+'''
+========================================================================
+ResNet for STL-10 (48x48)
+========================================================================
+'''
     
-def generator_resnet_cifar(noise, x_shape, dim=128, num_classes = None, labels = None, name = 'generator', reuse=False):
-    dim = dim * 2 #256
+def encoder_resnet_stl10(x, x_shape, z_dim=128, dim=64, \
+                         num_classes = None, labels = None, \
+                         name = 'encoder', \
+                         update_collection=None, \
+                                         reuse=False, is_training=True):
+    if labels is not None:
+        labels = tf.squeeze(labels)
+    act = lrelu
+    is_conditional = num_classes is not None and labels is not None
+    with tf.variable_scope(name, reuse=reuse):
+        image = tf.reshape(x, [-1, x_shape[0], x_shape[1], x_shape[2]])
+        image = ops.conv2d(image, dim, 3, 3, 1, 1, \
+                                           name='e_conv0') # 48 * 48 * dim
+                                                    
+        if is_conditional:
+            act0  = e_block_cond(image, dim * 2,\
+                                    num_classes = num_classes, \
+                                    labels = labels,\
+                                    is_training = is_training,\
+                                    name = 'e_block1', act=act) # 24 * 24 * dim * 2                                 
+            act1 = e_block_cond(act0, dim * 4, \
+                                    num_classes, labels,\
+                                    is_training = is_training,\
+                                    name = 'e_block2', act=act) # 12 * 12 * dim * 4
+                                      
+            act2 = e_block_cond(act1, dim * 8, \
+                                 num_classes, labels, \
+                                 is_training = is_training,\
+                                 name =  'e_block3', act=act)   # 6 * 6 * dim * 8
+            bn   = ops.batch_norm(num_classes, name='e_bn')    
+        
+        else:
+            
+            act0  = e_block(image, dim * 2, is_training = is_training,\
+                                    name = 'e_block1', act=act) # 24 * 24 * dim * 2    
+            act1 = e_block(act0, dim * 4, is_training, \
+                                      name = 'e_block2', act=act) # 12 * 12 * dim * 4 
+            act2 = e_block(act1, dim * 8, is_training, \
+                                 name =  'e_block3', act=act)     # 6 * 6 * dim * 8                                             
+            bn   = ops.batch_norm(name='e_bn')
+            
+        act2 = act(bn(act2, is_training))                 
+        act2 = tf.reshape(act2, [-1, 6 * 6 * dim * 8])                      
+        out  = ops.linear(act2, z_dim)
+        return out
+
+
+def generator_resnet_stl10(z, x_shape, dim=64, \
+                           num_classes = None, labels = None, \
+                           name = 'generator', reuse=False, \
+                           is_training=True):
+
+    if labels is not None:
+        labels = tf.squeeze(labels)
     x_dim = x_shape[0] * x_shape[1] * x_shape[2]
-    output = lib.linear.Linear('generator.Input', 128, 4*4*dim, noise)
-    output = tf.reshape(output, [-1, dim, 4, 4])                                 								         #4x4x256
-    output = ResidualBlock1('generator.1', dim, dim, 3, output, resample='up', num_classes=num_classes, labels=labels)   #8x8x256
-    output = ResidualBlock1('generator.2', dim, dim, 3, output, resample='up', num_classes=num_classes, labels=labels)   #16x16x256
-    output = ResidualBlock1('generator.3', dim, dim, 3, output, resample='up', num_classes=num_classes, labels=labels)   #32x32x256
-    output = Normalize('generator.OutputN', output, num_classes=num_classes, labels=labels)
-    output = nonlinearity('generator', output)
-    output = lib.conv2d.Conv2D('generator.Output', dim, 3, 3, output, he_init=False)									 #32x32x3
-    #transform to NHWC
-    output = tf.transpose(tf.reshape(output, [-1, x_shape[2], x_shape[0], x_shape[1]]), perm=[0, 2, 3, 1])
-    output = tf.sigmoid(output)
-    return tf.reshape(output, [-1, x_dim])
+    is_conditional = num_classes is not None and labels is not None
+    with tf.variable_scope(name, reuse=reuse):
+        act0 = ops.linear(z, dim * 8 * 6 * 6, scope='g_linear0')
+        act0 = tf.reshape(act0, [-1, 6, 6, dim * 8]) # 6 * 6 * dim * 8
+        
+        if is_conditional:
+            act1 = g_block_cond(act0, dim * 4, num_classes, labels, \
+                           is_training, 'g_block1')  # 12 * 12 * dim * 4
+            act2 = g_block_cond(act1, dim * 2, num_classes, labels, \
+                           is_training, 'g_block2')  # 24 * 24 * dim * 2 
+            act3 = g_block_cond(act2, dim * 1, num_classes, labels, \
+                           is_training, 'g_block3')  # 48 * 48 * dim * 1
+            bn   = ops.batch_norm(num_classes, name='g_bn')                                                       
+        else:
+            act1 = g_block(act0, dim * 4, is_training, 'g_block1') # 12 * 12 * dim * 4
+            act2 = g_block(act1, dim * 2, is_training, 'g_block2') # 24 * 24 * dim * 2
+            act3 = g_block(act2, dim * 1, is_training, 'g_block3') # 48 * 48 * dim * 1
+            bn   = ops.batch_norm(name='g_bn')
+                        
+        act3 = tf.nn.relu(bn(act3, is_training))
+        act4 = ops.conv2d(act3, 3, 3, 3, 1, 1, name='g_conv_last')
+        out  = tf.nn.sigmoid(act4)
+        return tf.reshape(out, [-1, x_dim])
 
-def generator_resnet_stl10(noise, x_shape, dim=64, num_classes = None, labels = None, name = 'generator', reuse=False):
-    x_dim = x_shape[0] * x_shape[1] * x_shape[2]
-    output = lib.linear.Linear('generator.Input', 128, 6*6*dim*8, noise)
-    output = tf.reshape(output, [-1, dim*8, 6, 6])                                  										#6x6x512
-    output = ResidualBlock1('generator.1', dim*8, dim*4, 3, output, resample='up', num_classes=num_classes, labels=labels)  #12x12x256
-    output = ResidualBlock1('generator.2', dim*4, dim*2, 3, output, resample='up', num_classes=num_classes, labels=labels)  #24x24x128
-    output = ResidualBlock1('generator.3', dim*2, dim, 3, output,   resample='up', num_classes=num_classes, labels=labels)  #48x48x64
-    output = Normalize('generator.OutputN', output, num_classes=num_classes, labels=labels)
-    output = nonlinearity('generator', output)
-    output = lib.conv2d.Conv2D('generator.Output', dim, 3, 3, output, he_init=False)										#48x48x3
-    #transform to NHWC
-    output = tf.transpose(tf.reshape(output, [-1, x_shape[2], x_shape[0], x_shape[1]]), perm=[0, 2, 3, 1])
-    output = tf.sigmoid(output)
-    return tf.reshape(output, [-1, x_dim])
+
+
+def discriminator_resnet_stl10(x, x_shape, dim=64, \
+                            num_classes = None, labels = None, \
+                            name = 'discriminator',\
+                            update_collection=None, reuse=False):
+
+  """Builds the discriminator graph.
+
+  Args:
+    x: The current batch of images to classify as fake or real.
+    x_shape: the shape [h x w x c] of image
+    dim: The d dimension.
+    update_collection: The update collections used in the
+                       spectral_normed_weight.
+  Returns:
+    A `Tensor` representing the logits of the discriminator.
+  """
+  if labels is not None:
+     labels = tf.squeeze(labels)
+  relu=tf.nn.relu
+  is_conditional = num_classes is not None and labels is not None
+  with tf.variable_scope(name, reuse=reuse):
     
-def discriminator_resnet_cifar(inputs, x_shape, dim=64, num_classes = None, labels = None, name = 'discriminator', reuse=False):
-    #transform to NCHW to use tflib
-    output = tf.transpose(tf.reshape(inputs, [-1, x_shape[0], x_shape[1], x_shape[2]]), perm=[0, 3, 1, 2])
-    output = OptimizedResBlockDisc1(output, dim)
-    output = ResidualBlock1('discriminator.2', dim, dim, 3, output, resample='down', num_classes=num_classes, labels=labels)
-    output = ResidualBlock1('discriminator.3', dim, dim, 3, output, resample=None, num_classes=num_classes, labels=labels)
-    output = ResidualBlock1('discriminator.4', dim, dim, 3, output, resample=None, num_classes=num_classes, labels=labels)
-    output = nonlinearity('discriminator', output)
-    feature = output #save feature before nonlinearity layer
-    output = tf.reduce_mean(output, axis=[2,3])
-    y = lib.linear.Linear('discriminator.Output', dim, 1, output)
-    output_wgan = tf.reshape(y, [-1])
-    return tf.sigmoid(output_wgan), output_wgan, tf.reshape(feature, [-1, 512 * 4 * 4])
-
-def discriminator_resnet_stl10(inputs, x_shape, dim=64, num_classes = None, labels = None, name = 'discriminator', reuse=False):
-    #transform to NCHW to use tflib
-    output = tf.transpose(tf.reshape(inputs, [-1, x_shape[0], x_shape[1], x_shape[2]]), perm=[0, 3, 1, 2])
-    output = OptimizedResBlockDisc1(output, dim)
-    output = ResidualBlock1('discriminator.2', dim, dim*2, 3, output, resample='down', num_classes=num_classes, labels=labels)
-    output = ResidualBlock1('discriminator.3', dim*2, dim*4, 3, output, resample='down', num_classes=num_classes, labels=labels)
-    output = ResidualBlock1('discriminator.4', dim*4, dim*8, 3, output, resample='down', num_classes=num_classes, labels=labels)
-    output = ResidualBlock1('discriminator.5', dim*8, dim*16, 3, output, resample=None, num_classes=num_classes, labels=labels)
-    output = nonlinearity('discriminator', output)
-    feature = output
-    output = tf.reduce_mean(output, axis=[2,3])
-    output = lib.linear.Linear('discriminator.Output', dim*16, 1, output)
-    output = tf.reshape(output, [-1])
-    print('feature shape',feature.get_shape().as_list())
-    return tf.sigmoid(output), output, tf.reshape(feature, [-1, 1024*3*3])
+    image = tf.reshape(x, [-1, x_shape[0], x_shape[1], x_shape[2]]) #48 * 48 * 3
+    h0 = optimized_block(image, dim, 'd_optimized_block1', \
+                                             act=relu) # 24 * 24 * dim
+    h1 = d_block(h0, dim * 2, 'd_block2', act=relu)  # 12 * 12 * dim * 2
+    h2 = d_block(h1, dim * 4, 'd_block3', act=relu)  # 6 * 6 * dim * 4
+    h3 = d_block(h2, dim * 8, 'd_block4', act=relu)  # 3 * 3 * dim * 8
+    h4 = d_block(h3, dim * 16, 'd_block5', None, act=relu)  # 3 * 3 * dim * 16
+    h4_act = relu(h4)
+    feat   = h4_act
+    h5     = tf.reduce_sum(h4_act, [1, 2])
+    out    = ops.linear(h5, 1, scope = 'linear_out')
+    
+    if is_conditional:
+        h_labels = ops.sn_embedding(labels, num_classes, dim,
+                                update_collection=update_collection,
+                                name='d_embedding')
+        out += tf.reduce_sum(h5 * h_labels, axis=1, keep_dims=True)
+    
+    feat = tf.reshape(feat, [-1, dim * 16 * 3 * 3])
+    return tf.sigmoid(out), out, feat

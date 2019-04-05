@@ -28,7 +28,7 @@ class DISTGAN(object):
                  loss_type='log',\
                  df_dim = 64, gf_dim = 64, ef_dim = 64, \
                  dataset = None, batch_size = 64, \
-                 n_steps = 400000, \
+                 n_steps = 300000, \
                  decay_step = 10000, decay_rate = 1.0,\
                  log_interval=10, \
                  out_dir = './output/', \
@@ -192,6 +192,15 @@ class DISTGAN(object):
         self.md_x       = tf.reduce_mean(self.f_recon - self.f_fake)
         self.md_z       = tf.reduce_mean(self.z_e - self.z) * self.lambda_w
         self.ae_reg     = tf.square(self.md_x - self.md_z)
+        
+        # Decay the weight of reconstruction
+        t = tf.cast(self.iteration, tf.float32)/self.n_steps
+        # mu = 0 if t <= N/2, mu in [0,0.05] 
+        # if N/2 < t and t < 3N/2 and mu = 0.05 if t > 3N/2
+        self.mu = tf.maximum(tf.minimum((t*0.1-0.05)*2, 0.05),0.0)
+        w_real  = 0.95 + self.mu
+        w_recon = 0.05 - self.mu
+        w_fake  = 1.0
 
         if self.loss_type == 'log':
             # Loss
@@ -200,21 +209,27 @@ class DISTGAN(object):
             self.d_recon = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.d_recon_logit,labels=tf.ones_like(self.d_recon_sigmoid)))
             
             # lower weights for d_recon to achieve sharper generated images, slightly improved from the original paper
-            self.d_cost  = 0.95 * self.d_real + 0.05 * self.d_recon + self.d_fake + self.lambda_p * self.penalty
+            # self.d_cost  = 0.95 * self.d_real + 0.05 * self.d_recon + self.d_fake + self.lambda_p * self.penalty #old
+            self.d_cost = w_real * self.d_real + w_recon * self.d_recon + w_fake * self.d_fake + self.lambda_p * self.penalty #new
         elif self.loss_type == 'hinge':
 			
             if self.nnet_type == 'dcgan':
-				self.d_cost = -(0.95 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_real_logit))  + \
-                            0.05 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_recon_logit)) + \
-                            tf.reduce_mean(tf.minimum(0.,-1 - self.d_fake_logit)) + self.lambda_p * self.penalty)  
+				#self.d_cost = -(0.95 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_real_logit))  + \
+                #            0.05 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_recon_logit)) + \
+                #            tf.reduce_mean(tf.minimum(0.,-1 - self.d_fake_logit)) + self.lambda_p * self.penalty)  
+                self.d_cost = -(w_real * tf.reduce_mean(tf.minimum(0.,-1 + self.d_real_logit))  + \
+                            w_recon * tf.reduce_mean(tf.minimum(0.,-1 + self.d_recon_logit)) + \
+                            tf.reduce_mean(tf.minimum(0.,-1 - self.d_fake_logit)) + self.lambda_p * self.penalty)            
             else:
-				self.d_cost = -(0.95 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_real_sigmoid))  + \
-                            0.05 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_recon_sigmoid)) + \
-                            tf.reduce_mean(tf.minimum(0.,-1 - self.d_fake_sigmoid)) + self.lambda_p * self.penalty)				
+				#self.d_cost = -(0.95 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_real_sigmoid))  + \
+                #            0.05 * tf.reduce_mean(tf.minimum(0.,-1 + self.d_recon_sigmoid)) + \
+                #            tf.reduce_mean(tf.minimum(0.,-1 - self.d_fake_sigmoid)) + self.lambda_p * self.penalty)
+                self.d_cost = -(w_real * tf.reduce_mean(tf.minimum(0.,-1 + self.d_real_sigmoid))  + \
+                            w_recon * tf.reduce_mean(tf.minimum(0.,-1 + self.d_recon_sigmoid)) + \
+                            tf.reduce_mean(tf.minimum(0.,-1 - self.d_fake_sigmoid)) + self.lambda_p * self.penalty)            
                                   
         self.r_cost  = self.ae_loss  + self.lambda_r * self.ae_reg
         self.g_cost  = tf.abs(tf.reduce_mean(self.d_real_sigmoid) - tf.reduce_mean(self.d_fake_sigmoid))
-
 
 		# Create optimizers        
         if self.nnet_type == 'resnet':
@@ -262,7 +277,7 @@ class DISTGAN(object):
 			self.global_step = tf.Variable(0, trainable=False)
 			self.learning_rate = tf.train.exponential_decay(self.lr, self.global_step, self.decay_step, self.decay_rate, staircase=True)
 
-			if self.db_name in ['mnist', 'celeba']:
+			if self.db_name in ['mnist']:
 				self.opt_r = self.create_optimizer(self.r_cost, self.vars_e + self.vars_g, self.learning_rate, self.beta1, self.beta2)
 			else:
 				self.opt_r = self.create_optimizer(self.r_cost, self.vars_e, self.learning_rate, self.beta1, self.beta2)
@@ -278,7 +293,7 @@ class DISTGAN(object):
         run_config = tf.ConfigProto()
         run_config.gpu_options.allow_growth = True
         
-        saver = tf.train.Saver(max_to_keep=2)
+        saver = tf.train.Saver(var_list = self.vars_e + self.vars_g + self.vars_d, max_to_keep=1)
 
         with tf.Session(config=run_config) as sess:
             
@@ -365,7 +380,7 @@ class DISTGAN(object):
                                 imwrite(im_fake_save[ii,:,:,:], fake_path)
 
 
-                if step % (self.log_interval*2000) == 0:
+                if step == self.n_steps:
                     if not os.path.exists(self.ckpt_dir):
                         os.makedirs(self.ckpt_dir)
                     save_path = saver.save(sess, '%s/epoch_%d.ckpt' % (self.ckpt_dir, step))
