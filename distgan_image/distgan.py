@@ -170,12 +170,9 @@ class DISTGAN(object):
         with tf.variable_scope('generator'):
             self.G   = self.create_generator()
             
-            # slow version
             self.X_f = self.G(self.z,   self.data_shape, dim = self.gf_dim, reuse=False) #generate fake samples
             self.X_r = self.G(self.z_e, self.data_shape, dim = self.gf_dim, reuse=True)  #generate reconstruction samples
             
-            self.X_f_img = self.G(self.z, self.data_shape, dim = self.gf_dim, reuse=True, training=False)
-
         # create discriminator
         with tf.variable_scope('discriminator'):
             self.D   = self.create_discriminator()
@@ -342,7 +339,7 @@ class DISTGAN(object):
                     
 
                     # save generated images
-                    im_fake_save = sess.run(self.X_f_img,feed_dict={self.z: mb_z})
+                    im_fake_save = sess.run(self.X_f,feed_dict={self.z: mb_z})
                     im_fake_save = np.reshape(im_fake_save,(-1, self.data_shape[0], self.data_shape[1], self.data_shape[2]))
                     ncols, nrows = immerge_row_col(np.shape(im_fake_save)[0])
                     im_save_path = os.path.join(self.out_dir,'image_%d_fake.jpg' % (step))
