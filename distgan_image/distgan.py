@@ -183,7 +183,7 @@ class DISTGAN(object):
             # Compute gradient penalty
             epsilon = tf.random_uniform(shape=[tf.shape(self.X)[0],1], minval=0., maxval=1.)
             interpolation = epsilon * self.X + (1 - epsilon) * self.X_f
-            _,d_inter,_ = self.D(interpolation, self.data_shape, reuse=True)
+            _,d_inter,_ = self.D(interpolation, self.data_shape, dim = self.df_dim, reuse=True)
             gradients = tf.gradients([d_inter], [interpolation])[0]
             slopes = tf.sqrt(tf.reduce_mean(tf.square(gradients), reduction_indices=[1]))
             self.penalty = tf.reduce_mean((slopes - 1) ** 2)
