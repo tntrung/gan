@@ -137,7 +137,7 @@ or
 ## Updates
 - 2018/06/18: Dist-GAN supports standard CNN architecture like SN-GAN [2]. New FID results of standard CNN (+ hinge loss) are added.
 - 2018/12/15: Dist-GAN supports ResNet architecture like WGAN-GP [1], SN-GAN [2] (modified from ResNet code of WGAN-GP [1]).
-- 2019/04/05: Dist-GAN supports better ResNet architecture (modified from ResNet code of SAGAN [3]).
+- 2019/04/05: Dist-GAN supports another ResNet architecture (modified from ResNet code of SAGAN [3]).
 
 ## References
 
