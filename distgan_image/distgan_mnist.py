@@ -29,7 +29,7 @@ if __name__ == '__main__':
     # [Impotant]
     # lambda_w = sqrt(d/D) as in the paper, if you change the network 
     #  architecture: (d: data noise dim, D: feature dim)
-    lambda_w  = np.sqrt(noise_dim/feature_dim)
+    lambda_w  = np.sqrt(noise_dim * 1.0/feature_dim)
     
     # output dir
     out_dir = os.path.join(out_dir, model, db_name)
