@@ -519,7 +519,7 @@ class GAN(object):
                             elapsed = int(time.time() - start)
                             print('step: {:4d}, negative critic loss: {:8.4f}, , negative G loss: {:8.4f}, time: {:3d} s'.format(step, -loss_d, -loss_g, elapsed))
 
-                    elif self.model == 'gaan':
+                    elif self.model == 'distgan':
                         self.loss_d_curve += [loss_d]
                         self.loss_g_curve += [loss_g]
                         self.loss_r_curve += [loss_r/10.] #to better draw                          
